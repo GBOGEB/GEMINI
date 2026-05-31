@@ -1,15 +1,5 @@
-# Metadata
-project_name: "GBOGEB_GEMINI"
-version: "1.0.0"
-mode: "Idempotent_Recursive_Build"
+# ... (bestaande configuratie blijft ongewijzigd)
 
-# Baseline Engine Configuration
-output_formats:
-  - html
-  - ascii
-  - mermaid
-
-# Placeholders for engineering metrics to track
 monitored_metrics:
   - id: "REQ-001"
     description: "System volumetric efficiency verification"
@@ -17,3 +7,6 @@ monitored_metrics:
   - id: "REQ-002"
     description: "Interface boundaries and data lineage"
     status: "Draft"
+  - id: "REQ-003"
+    description: "Helium refrigerator volumetric efficiency and 2K thermal load stability analysis"
+    status: "Active_Review"
