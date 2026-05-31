@@ -1,4 +1,11 @@
-# ... (bestaande configuratie blijft ongewijzigd)
+project_name: "GBOGEB_GEMINI"
+version: "1.0.0"
+mode: "Idempotent_Recursive_Build"
+
+output_formats:
+  - html
+  - ascii
+  - mermaid
 
 monitored_metrics:
   - id: "REQ-001"
