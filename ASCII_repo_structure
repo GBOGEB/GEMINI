@@ -1,0 +1,13 @@
+GBOGEB/GEMINI/
+├── .github/
+│   └── workflows/
+│       └── generate_blsn_reports.yml  # Automated CI/CD execution
+├── config/
+│   └── blsn_config.yaml               # Metadata and structural constants
+├── src/
+│   └── pipeline.py                    # Core parsing and rendering logic
+├── notebook/
+│   └── blsn_interactive.md            # Interactive notebook for local execution
+└── output/
+    ├── report.html                    # Rendered engineering baseline
+    └── architecture.mermaid           # Lineage tracking diagram
