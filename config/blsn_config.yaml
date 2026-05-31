@@ -1,1 +1,19 @@
+# Metadata
+project_name: "GBOGEB_GEMINI"
+version: "1.0.0"
+mode: "Idempotent_Recursive_Build"
 
+# Baseline Engine Configuration
+output_formats:
+  - html
+  - ascii
+  - mermaid
+
+# Placeholders for engineering metrics to track
+monitored_metrics:
+  - id: "REQ-001"
+    description: "System volumetric efficiency verification"
+    status: "Baseline"
+  - id: "REQ-002"
+    description: "Interface boundaries and data lineage"
+    status: "Draft"
