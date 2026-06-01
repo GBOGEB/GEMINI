@@ -6,3 +6,111 @@ bios:
 version_control:
   manifest_version: "1.0.0"
   schema_version: "1"
+
+# ---------------------------------------------------------------------------
+# Federation handshake
+# ---------------------------------------------------------------------------
+# This block is the machine-readable expression of the ownership model that
+# governs the CODEX / ABACUS / ARTSTYLE federation. It declares what concern
+# GEMINI owns, what it consumes (pinned), what contracts ARTSTYLE expects from
+# it, and which artifact types must be routed OUT of this repository because
+# their ownership is clearer elsewhere. See FEDERATION.md for the full prose.
+federation:
+  # The single concern this repository owns. Artifacts that are not an
+  # expression of this concern do not belong here.
+  concern: "review-reasoning-notebook"
+  role: "Secondary reviewer / alternative reasoning / notebook translation"
+
+  # The governing law of the federation. These invariants are enforced
+  # mechanically where possible (see src/federation_guard.py).
+  ownership_model:
+    - "Move artifacts downward into deeper folders."
+    - "Move ownership upward into clearer domains."
+    - "Avoid moving repositories unless duplication is overwhelming."
+
+  # Upstream dependencies GEMINI consumes. CODEX is declarative and versioned,
+  # so consumers pin to a semver range. ABACUS is stateful/ephemeral and must
+  # never be depended upon (one-directional: ABACUS may import CODEX, never the
+  # reverse), so it is referenced as a data source only, never pinned.
+  upstream_dependencies:
+    codex:
+      repo: "GBOGEB/CODEX"
+      kind: "declarative-versioned"
+      pinned_version: ">=1.0.0,<2.0.0"
+    abacus:
+      repo: "GBOGEB/ABACUS"
+      kind: "stateful-ephemeral"
+      pinned_version: null
+      note: "Referenced as a read-only data source; never a build dependency."
+
+  # Contracts the ARTSTYLE federation bridge expects this repository to honour.
+  # ARTSTYLE owns no artifacts of its own domain; it owns these interfaces.
+  contracts:
+    artstyle:
+      repo: "GBOGEB/ARTSTYLE"
+      provides:
+        - "docs/federation/federation_cherry_pick.json"
+        - "docs/index.json"
+      handshake: "repo_manifest.yaml#federation"
+
+  # Classify-then-route table: each artifact TYPE has exactly one home domain.
+  # An artifact appearing in GEMINI whose type routes elsewhere is a signal to
+  # route it out (see foreign_artifact_signatures).
+  artifact_routing:
+    schema: "CODEX"
+    mcp_block: "CODEX"
+    template: "CODEX"
+    parser: "CODESPACES_jyperter"
+    rtm_logic: "DOCX_RTM_Automation"
+    taxonomy: "document-organization-system"
+    agent_runtime: "ABACUS"
+    federation_contract: "ARTSTYLE"
+    governance_policy: "anthropic"
+    domain_knowledge: "cryogenic-accelerator-workspace"
+    dashboard: "cryo_leak_rate_dashboard"
+    engineering_calculation: "Q_engineering_tools"
+    review_reasoning: "GEMINI"
+    notebook: "GEMINI"
+
+  # Provenance-bearing artifacts whose value is their place in this repo's
+  # timeline. These are frozen: never spliced, never moved.
+  frozen_artifacts:
+    - "README.md"
+    - "CHANGELOG.md"
+    - "LICENSE"
+    - "docs/adr/**"
+    - "**/ADR*.md"
+
+  # Path/filename signatures that indicate a cross-concern artifact has landed
+  # in GEMINI. The guard flags these so they can be routed to their home domain
+  # rather than accumulating here. Deepening folders is always allowed; only
+  # foreign artifact TYPES are flagged.
+  foreign_artifact_signatures:
+    schema:
+      home: "CODEX"
+      patterns:
+        - "**/schemas/**"
+        - "**/*.schema.json"
+        - "**/*.schema.yaml"
+    mcp_block:
+      home: "CODEX"
+      patterns:
+        - "**/mcp_blocks/**"
+        - "**/mcp/blocks/**"
+    agent_runtime:
+      home: "ABACUS"
+      patterns:
+        - "**/agents/**"
+        - "**/runtime/**"
+        - "**/deployments/**"
+        - "**/experiments/**"
+    rtm_logic:
+      home: "DOCX_RTM_Automation"
+      patterns:
+        - "**/rtm/**"
+
+  # Paths that are exempt from foreign-artifact flagging. GEMINI legitimately
+  # mirrors federation peers' artifacts read-only under docs/federation/.
+  guard_allowlist:
+    - "docs/federation/**"
+    - ".git/**"

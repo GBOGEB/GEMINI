@@ -105,6 +105,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python src/federation_bridge.py
 
+      - name: Enforce Federation Ownership Guard
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python src/federation_guard.py
+
       - name: Build Statistical Engine
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
         run: python src/stats_engine.py
