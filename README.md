@@ -1,6 +1,15 @@
 # GBOGEB / GEMINI 🚀
 > **Single Source of Truth (SSOT) Baseline Configuration Engine**
 
+## Version Control
+- Manifest Version: `1.0.0`
+- Schema Version: `1`
+
+## System BIOS & Intent
+- Purpose: Code-driven SSOT and executable specification engine.
+- Primary Function: Validate and render cryogenic system engineering requirements.
+- Secondary Function: Provide a decoupled, multi-format handover asset for AI coding agents.
+
 This repository serves as a code-driven repository framework designed for verifying engineering architectures, tracking technical requirement lineages, and providing executable specifications for AI systems (GitHub Copilot / OpenAI GPTs).
 
 ## 📊 Repository Components

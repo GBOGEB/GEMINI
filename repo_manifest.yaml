@@ -1,0 +1,8 @@
+bios:
+  purpose: "Code-driven SSOT and executable specification engine."
+  primary_function: "Validate and render cryogenic system engineering requirements."
+  secondary_function: "Provide a decoupled, multi-format handover asset for AI coding agents."
+
+version_control:
+  manifest_version: "1.0.0"
+  schema_version: "1"

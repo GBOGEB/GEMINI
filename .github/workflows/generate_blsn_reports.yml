@@ -72,6 +72,10 @@ jobs:
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
         run: python -m src.pipeline
 
+      - name: Build Repository Indexes
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python src/indexer.py
+
       - name: Archive Engineering Outputs
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
@@ -104,6 +108,9 @@ jobs:
 
       - name: Build docs/ publish assets
         run: python -m src.pipeline
+
+      - name: Build Repository Indexes
+        run: python src/indexer.py
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
