@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BLSN Report</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-900">
   <main class="mx-auto max-w-5xl px-6 py-10">
@@ -125,6 +126,12 @@
       </table>
     </section>
 
+    <section class="mb-8 rounded-2xl border border-cyan-200 bg-white p-6 shadow-sm">
+      <h2 class="text-xl font-semibold text-slate-900">Interactive Plotly Visualizations</h2>
+      <div id="plotly-telemetry-chart" class="mt-4 h-[420px] w-full"></div>
+      <div id="plotly-pca-chart" class="mt-6 h-[420px] w-full"></div>
+    </section>
+
     <section class="mb-8 rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
       <h2 class="text-xl font-semibold text-slate-900">System Priority &amp; Bottleneck Ranking (Bradley-Terry)</h2>
       <p class="mt-3 text-sm text-slate-700">Pairwise probability model: <code>P(i &gt; j) = p_i / (p_i + p_j)</code></p>
@@ -183,5 +190,30 @@
       </div>
     </section>
   </main>
+  <script>
+    (function () {
+      const emptyLayout = {
+        xaxis: { visible: false },
+        yaxis: { visible: false },
+        annotations: [{ text: 'No Plotly payload available', showarrow: false, xref: 'paper', yref: 'paper', x: 0.5, y: 0.5 }]
+      };
+
+      const renderFallback = () => {
+        Plotly.newPlot('plotly-telemetry-chart', [], emptyLayout);
+        Plotly.newPlot('plotly-pca-chart', [], emptyLayout);
+      };
+
+      fetch('visuals/plotly_payloads.json')
+        .then((response) => response.ok ? response.json() : Promise.reject(new Error('Missing Plotly payload')))
+        .then((payload) => {
+          const charts = payload && payload.charts ? payload.charts : {};
+          const telemetry = charts.telemetry_combo || {};
+          const pca = charts.pca_bottlenecks || {};
+          Plotly.newPlot('plotly-telemetry-chart', telemetry.data || [], telemetry.layout || emptyLayout);
+          Plotly.newPlot('plotly-pca-chart', pca.data || [], pca.layout || emptyLayout);
+        })
+        .catch(() => renderFallback());
+    })();
+  </script>
 </body>
 </html>
