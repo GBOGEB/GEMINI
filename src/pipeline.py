@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import textwrap
 from contextlib import redirect_stdout
 from html import escape
 from io import StringIO
@@ -247,6 +248,7 @@ def generate_html_report(
     kpi_dashboard: dict | None = None,
     historical_ledger: dict | None = None,
     doe_matrix: dict | None = None,
+    bt_ranking: dict | None = None,
 ) -> str:
     presentation = presentation_layer or {"enable_lipstick": False, "css_framework_cdn": "", "theme": "light"}
     publishing_cfg = publishing or {"base_url": "", "generate_pdf": False, "generate_slides": False}
@@ -363,6 +365,64 @@ def generate_html_report(
         if pca_rows
         else '<tr><td colspan="4" class="px-4 py-3 text-sm text-slate-500">No PCA proof data available.</td></tr>'
     )
+    bt = bt_ranking if isinstance(bt_ranking, dict) else {}
+    global_bt = bt.get("global_repo_ranking", [])
+    global_bt = global_bt if isinstance(global_bt, list) else []
+    inter_bt = bt.get("inter_category_ranking", [])
+    inter_bt = inter_bt if isinstance(inter_bt, list) else []
+    requirement_block = bt.get("qplant_requirements_ranking", {})
+    requirement_block = requirement_block if isinstance(requirement_block, dict) else {}
+    requirement_global = requirement_block.get("global", [])
+    requirement_global = requirement_global if isinstance(requirement_global, list) else []
+
+    global_bt_rows = "\n".join(
+        (
+            "<tr class=\"border-b border-slate-200 last:border-none\">"
+            f"<td class=\"px-4 py-3 text-sm text-slate-800\">{int(item.get('rank', 0) or 0)}</td>"
+            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{escape(str(item.get('name', 'N/A')))}</td>"
+            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{float(item.get('strength', 0.0) or 0.0):.6f}</td>"
+            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{float(item.get('win_probability_vs_top', 0.0) or 0.0):.2f}%</td>"
+            "</tr>"
+        )
+        for item in global_bt[:10]
+        if isinstance(item, dict)
+    )
+    if not global_bt_rows:
+        global_bt_rows = (
+            '<tr><td colspan="4" class="px-4 py-3 text-sm text-slate-500">No global BT ranking data.</td></tr>'
+        )
+
+    inter_bt_rows = "\n".join(
+        (
+            "<tr class=\"border-b border-slate-200 last:border-none\">"
+            f"<td class=\"px-4 py-3 text-sm text-slate-800\">{int(item.get('rank', 0) or 0)}</td>"
+            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{escape(str(item.get('name', 'N/A')))}</td>"
+            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{float(item.get('win_probability_vs_top', 0.0) or 0.0):.2f}%</td>"
+            "</tr>"
+        )
+        for item in inter_bt
+        if isinstance(item, dict)
+    )
+    if not inter_bt_rows:
+        inter_bt_rows = (
+            '<tr><td colspan="3" class="px-4 py-3 text-sm text-slate-500">No inter-category BT ranking data.</td></tr>'
+        )
+
+    requirement_rows = "\n".join(
+        (
+            "<tr class=\"border-b border-slate-200 last:border-none\">"
+            f"<td class=\"px-4 py-3 text-sm text-slate-800\">{int(item.get('rank', 0) or 0)}</td>"
+            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{escape(str(item.get('name', 'N/A')))}</td>"
+            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{float(item.get('win_probability_vs_top', 0.0) or 0.0):.2f}%</td>"
+            "</tr>"
+        )
+        for item in requirement_global[:10]
+        if isinstance(item, dict)
+    )
+    if not requirement_rows:
+        requirement_rows = (
+            '<tr><td colspan="3" class="px-4 py-3 text-sm text-slate-500">No QPLANT requirement ranking data.</td></tr>'
+        )
 
     return f"""
 <!DOCTYPE html>
@@ -482,6 +542,47 @@ def generate_html_report(
       </table>
     </section>
 
+    <section class=\"mb-8 rounded-2xl border border-amber-200 bg-white p-6 shadow-sm\">
+      <h2 class=\"text-xl font-semibold text-slate-900\">System Priority &amp; Bottleneck Ranking (Bradley-Terry)</h2>
+      <p class=\"mt-3 text-sm text-slate-700\">Pairwise probability model: <code>P(i &gt; j) = p_i / (p_i + p_j)</code></p>
+      <h3 class=\"mt-5 text-lg font-semibold text-slate-900\">Global Repo Ranking</h3>
+      <table class=\"mt-3 w-full overflow-hidden rounded-xl border border-slate-200 bg-white\">
+        <thead>
+          <tr class=\"bg-slate-100 text-left\">
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Rank</th>
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Artifact</th>
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">BT Strength</th>
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Win Prob vs Top</th>
+          </tr>
+        </thead>
+        <tbody>{global_bt_rows}</tbody>
+      </table>
+
+      <h3 class=\"mt-6 text-lg font-semibold text-slate-900\">Inter-Category Ranking</h3>
+      <table class=\"mt-3 w-full overflow-hidden rounded-xl border border-slate-200 bg-white\">
+        <thead>
+          <tr class=\"bg-slate-100 text-left\">
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Rank</th>
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Category</th>
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Win Prob vs Top</th>
+          </tr>
+        </thead>
+        <tbody>{inter_bt_rows}</tbody>
+      </table>
+
+      <h3 class=\"mt-6 text-lg font-semibold text-slate-900\">QPLANT Requirements Ranking Bridge</h3>
+      <table class=\"mt-3 w-full overflow-hidden rounded-xl border border-slate-200 bg-white\">
+        <thead>
+          <tr class=\"bg-slate-100 text-left\">
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Rank</th>
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Requirement</th>
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Win Prob vs Top</th>
+          </tr>
+        </thead>
+        <tbody>{requirement_rows}</tbody>
+      </table>
+    </section>
+
     <section class=\"rounded-2xl border border-indigo-200 bg-gradient-to-br from-white to-indigo-50 p-6 shadow-sm\">
       <div class=\"mb-4 flex items-center justify-between gap-4\">
         <h2 class=\"text-xl font-semibold text-slate-900\">Mermaid System Flow</h2>
@@ -582,7 +683,11 @@ def _generate_pdf(html_content: str, output_path: Path) -> None:
 
     for chunk_start in range(0, len(text_content), 2000):
         chunk = text_content[chunk_start : chunk_start + 2000]
-        pdf.multi_cell(0, 8, chunk)
+        wrapped_lines = textwrap.wrap(chunk, width=80, break_long_words=True, break_on_hyphens=True)
+        for line in wrapped_lines or [" "]:
+            sanitized = line.encode("latin-1", errors="replace").decode("latin-1")
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(190, 8, sanitized)
 
     pdf.output(str(output_path))
 
@@ -607,6 +712,7 @@ def main() -> None:
     kpi_dashboard = _load_kpi_dashboard()
     historical_ledger = _load_json_data(OUTPUT_DIR / "historical_telemetry_ledger.json")
     doe_matrix = _load_json_data(OUTPUT_DIR / "experimental_design_matrix.json")
+    bt_ranking = _load_json_data(OUTPUT_DIR / "bt_ranking.json")
 
     report_html = generate_html_report(
         params,
@@ -618,6 +724,7 @@ def main() -> None:
         kpi_dashboard,
         historical_ledger,
         doe_matrix,
+        bt_ranking,
     )
     (OUTPUT_DIR / "index.html").write_text(report_html, encoding="utf-8")
 
