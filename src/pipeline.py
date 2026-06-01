@@ -721,13 +721,24 @@ def generate_html_report(
     </section>
 
     <!-- ── Interactive Plotly Visualizations  (manager + engineer) ──────
-         Charts are rendered with a theme-aware Plotly template; re-rendered
-         automatically when the theme toggle changes via Plotly.react().     -->
+         Charts use transparent backgrounds for seamless light/dark mode;
+         the audience-tab buttons below toggle between Executive and
+         Engineering views without reloading the page.                      -->
     <section class="card aud-manager">
-      <h2 class="card-title">Interactive Visualizations</h2>
-      <p style="font-size:0.8rem;color:var(--text-3);margin:0 0 1rem">Telemetry trend and PCA bottleneck analysis — theme-aware rendering.</p>
-      <div id="plotly-telemetry-chart" style="width:100%;min-height:400px;border-radius:0.5rem;overflow:hidden;"></div>
-      <div id="plotly-pca-chart" style="width:100%;min-height:400px;border-radius:0.5rem;overflow:hidden;margin-top:1.5rem;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+        <h2 class="card-title" style="margin:0">Analytics Dashboard</h2>
+        <!-- Audience tab buttons -->
+        <div style="display:flex;gap:0.5rem;">
+          <button id="btn-exec" class="ctrl-btn" style="background:var(--accent);color:#fff;border-color:var(--accent);" onclick="switchChartView('executive')">Executive View</button>
+          <button id="btn-eng"  class="ctrl-btn" onclick="switchChartView('engineering')">Engineering View</button>
+        </div>
+      </div>
+      <div id="view-executive" style="display:block;">
+        <div id="plotly-telemetry-chart" style="width:100%;min-height:450px;border-radius:0.5rem;overflow:hidden;"></div>
+      </div>
+      <div id="view-engineering" style="display:none;">
+        <div id="plotly-pca-chart" style="width:100%;min-height:450px;border-radius:0.5rem;overflow:hidden;"></div>
+      </div>
     </section>
 
     <!-- ── Bradley-Terry Ranking  (manager + engineer) ──────────────────
@@ -862,32 +873,56 @@ def generate_html_report(
       /* ── Plotly theme-aware rendering ──────────────────────────────── */
       let _payload = null;  /* cached payload to allow re-render on theme change */
 
-      /* Map report theme to the matching built-in Plotly template name. */
-      const plotlyTpl = (themeRaw) =>
-        resolveTheme(themeRaw) === 'dark' ? 'plotly_dark' : 'plotly_white';
-
-      /* Patch a Plotly chart layout to inherit the current theme colours. */
+      /* Patch a Plotly chart layout for dynamic font/grid colours.
+         Backgrounds stay transparent (set by Python); only text and grid
+         colours are adjusted so light/dark switching works seamlessly.    */
       function patchLayout(chart, themeRaw) {{
         const isDark = resolveTheme(themeRaw) === 'dark';
+        const gridColor = isDark ? '#334155' : '#e2e8f0';
+        const fontColor = isDark ? '#94a3b8' : '#475569';
         return Object.assign({{}}, chart.layout || {{}}, {{
-          template:      plotlyTpl(themeRaw),
           paper_bgcolor: 'rgba(0,0,0,0)',
           plot_bgcolor:  'rgba(0,0,0,0)',
-          font:          {{ color: isDark ? '#94a3b8' : '#475569' }},
-          xaxis: Object.assign({{}}, (chart.layout || {{}}).xaxis, {{ gridcolor: isDark ? '#334155' : '#e2e8f0' }}),
-          yaxis: Object.assign({{}}, (chart.layout || {{}}).yaxis, {{ gridcolor: isDark ? '#334155' : '#e2e8f0' }}),
+          font:          {{ color: fontColor }},
+          xaxis: Object.assign({{}}, (chart.layout || {{}}).xaxis, {{ gridcolor: gridColor, zerolinecolor: gridColor }}),
+          yaxis: Object.assign({{}}, (chart.layout || {{}}).yaxis, {{ gridcolor: gridColor, zerolinecolor: gridColor }}),
         }});
       }}
 
-      /* Re-render both Plotly charts with the resolved theme. */
+      /* Re-render both Plotly charts with the resolved theme.
+         Reads from audience-structured payload (executive / engineering). */
       function rerenderPlotly(themeRaw) {{
         if (!window.Plotly || !_payload) return;
-        const charts = _payload.charts || {{}};
-        const tel = charts.telemetry_combo  || {{}};
-        const pca = charts.pca_bottlenecks  || {{}};
+        const audience = _payload.audience || {{}};
+        const tel = (audience.executive   || {{}}).telemetry_combo  || {{}};
+        const pca = (audience.engineering || {{}}).pca_bottlenecks  || {{}};
         Plotly.react('plotly-telemetry-chart', tel.data || [], patchLayout(tel, themeRaw));
         Plotly.react('plotly-pca-chart',        pca.data || [], patchLayout(pca, themeRaw));
       }}
+
+      /* ── Chart-view audience tab toggle ─────────────────────────────── */
+      window.switchChartView = function (view) {{
+        const viewExec = document.getElementById('view-executive');
+        const viewEng  = document.getElementById('view-engineering');
+        const btnExec  = document.getElementById('btn-exec');
+        const btnEng   = document.getElementById('btn-eng');
+        if (!viewExec || !viewEng) return;
+        const isExec = view === 'executive';
+        viewExec.style.display = isExec ? 'block' : 'none';
+        viewEng.style.display  = isExec ? 'none'  : 'block';
+        if (btnExec) {{
+          btnExec.style.background   = isExec ? 'var(--accent)' : '';
+          btnExec.style.color        = isExec ? '#fff' : '';
+          btnExec.style.borderColor  = isExec ? 'var(--accent)' : '';
+        }}
+        if (btnEng) {{
+          btnEng.style.background   = isExec ? '' : 'var(--accent)';
+          btnEng.style.color        = isExec ? '' : '#fff';
+          btnEng.style.borderColor  = isExec ? '' : 'var(--accent)';
+        }}
+        /* Trigger resize so Plotly fills a div that was previously hidden. */
+        window.dispatchEvent(new Event('resize'));
+      }};
 
       /* ── Public setters wired to onchange handlers ─────────────────── */
       window.setTheme = function (v) {{
@@ -917,8 +952,7 @@ def generate_html_report(
       applyAttr('audience', 'ctrl-audience', initAudience);
 
       /* ── Plotly payload fetch ──────────────────────────────────────── */
-      const emptyLayout = (themeRaw) => ({{
-        template:      plotlyTpl(themeRaw),
+      const emptyLayout = () => ({{
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor:  'rgba(0,0,0,0)',
         xaxis: {{ visible: false }},
@@ -936,7 +970,7 @@ def generate_html_report(
           rerenderPlotly(getPref('theme', '{theme}'));
         }})
         .catch(() => {{
-          const el = emptyLayout(getPref('theme', '{theme}'));
+          const el = emptyLayout();
           Plotly.newPlot('plotly-telemetry-chart', [], el);
           Plotly.newPlot('plotly-pca-chart',        [], el);
         }});
