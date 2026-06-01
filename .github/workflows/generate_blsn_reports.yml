@@ -2,33 +2,180 @@ name: Generate Code-Driven BLSN Reports
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  build-and-document:
-    runs-on: ubuntu-latest
+  full-matrix-validation:
+    name: Run (${{ matrix.os }} - Py ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.telemetry == true }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        include:
+          - os: windows-latest
+            python-version: "3.12"
+          - os: ubuntu-latest
+            python-version: "pypy-3.9"
+            telemetry: true
+          - os: ubuntu-latest
+            python-version: "3.13-dev"
+            telemetry: true
+          - os: ubuntu-latest
+            python-version: "3.14-dev"
+            telemetry: true
 
     steps:
-    - name: Checkout Repository Source
-      uses: actions/checkout@v4
+      - name: Checkout Repository Source
+        uses: actions/checkout@v4
 
-    - name: Setup Python Environment
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install Configuration Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pyyaml
+      - name: Install image-lib system deps (Linux only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y libjpeg-dev zlib1g-dev
 
-    - name: Execute Idempotent BLSN Engine
-      run: python src/pipeline.py
+      - name: Install Core & Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --only-binary :all: Pillow || true
+          pip install pytest pytest-json-report ruff yamllint pyyaml fpdf2 plotly pandas
 
-    - name: Archive Engineering Outputs
-      uses: actions/upload-artifact@v4
-      with:
-        name: blsn-html-and-charts
-        path: output/
+      - name: Data Substrate Linting (YAML & JSON)
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: |
+          echo "=== YAML LINTING ==="
+          yamllint config/blsn_config.yaml -d "{extends: default, rules: {line-length: disable}}"
+          echo "=== JSON LINTING ==="
+          find . -name "*.json" -print0 | xargs -0 -r -I {} python -m json.tool {} > /dev/null
+          echo "--> All YAML and JSON substrates structurally validated."
+
+      - name: Python Linting (Ruff Check)
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: ruff check .
+
+      - name: Technical Debt Radar (Ruff 3.12 Upgrade Check)
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
+        run: |
+          echo "=== TECHNICAL DEBT REPORT ==="
+          ruff check . --select UP --target-version py312 --output-format=github || true
+
+      - name: Logic Validation & Speed Telemetry (Pytest)
+        id: runtime_test
+        continue-on-error: ${{ matrix.python-version != '3.9' || matrix.os != 'ubuntu-latest' }}
+        run: |
+          mkdir -p docs
+          pytest -v --json-report --json-report-file=docs/pytest_telemetry.json --durations=0
+
+      - name: Parse DMAIC KPI Dashboard
+        if: always() && matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python src/telemetry_parser.py
+
+      - name: Archive Pytest Telemetry Payload
+        if: always() && matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-telemetry-json
+          path: docs/pytest_telemetry.json
+          if-no-files-found: warn
+
+      - name: Execute Idempotent BLSN Engine
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python -m src.pipeline
+
+      - name: Build Repository Indexes
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python src/indexer.py
+
+      - name: Run Federation Artifact Bridge
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python src/federation_bridge.py
+
+      - name: Build Statistical Engine
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python src/stats_engine.py
+
+      - name: Build Bradley-Terry Ranking
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python src/bt_ranking.py
+
+      - name: Build Jekyll Data Bridge
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python src/jekyll_bridge.py
+
+      - name: Archive Engineering Outputs
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: blsn-docs-and-charts
+          path: docs/
+
+  deploy-pages:
+    name: Deploy GitHub Pages
+    runs-on: ubuntu-latest
+    needs: full-matrix-validation
+    if: github.ref == 'refs/heads/main' && needs.full-matrix-validation.result == 'success'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout Repository Source
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install Publishing Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml fpdf2 plotly numpy
+
+      - name: Build docs/ publish assets
+        run: python -m src.pipeline
+
+      - name: Build Statistical Engine
+        run: python src/stats_engine.py
+
+      - name: Build Repository Indexes
+        run: python src/indexer.py
+
+      - name: Build Bradley-Terry Ranking
+        run: python src/bt_ranking.py
+
+      - name: Build Jekyll Data Bridge
+        run: python src/jekyll_bridge.py
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build Jekyll site
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./docs
+          destination: ./_site
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,121 @@
+[
+  {
+    "file_name": "docs/_config.yml",
+    "file_type": "yml",
+    "size_bytes": 342,
+    "last_modified": "2026-06-01T02:51:50.010828+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/_includes/metric_card.html",
+    "file_type": "html",
+    "size_bytes": 830,
+    "last_modified": "2026-06-01T02:51:50.013828+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/_includes/plotly_render.html",
+    "file_type": "html",
+    "size_bytes": 432,
+    "last_modified": "2026-06-01T02:51:50.014828+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/_layouts/default.html",
+    "file_type": "html",
+    "size_bytes": 380,
+    "last_modified": "2026-06-01T02:51:50.013263+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/blsn_report.pdf",
+    "file_type": "pdf",
+    "size_bytes": 3192,
+    "last_modified": "2026-06-01T02:52:21.506172+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/ci-total-runtime-s.md",
+    "file_type": "md",
+    "size_bytes": 145,
+    "last_modified": "2026-06-01T02:52:21.165477+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/experimental_design_matrix.json",
+    "file_type": "json",
+    "size_bytes": 2169,
+    "last_modified": "2026-06-01T02:52:21.704392+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/federation/federation_cherry_pick.json",
+    "file_type": "json",
+    "size_bytes": 314,
+    "last_modified": "2026-06-01T02:48:00.071053+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/historical_telemetry_ledger.json",
+    "file_type": "json",
+    "size_bytes": 1433,
+    "last_modified": "2026-06-01T02:52:21.704087+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/index.html",
+    "file_type": "html",
+    "size_bytes": 15349,
+    "last_modified": "2026-06-01T02:52:21.166370+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/kpi_dashboard.json",
+    "file_type": "json",
+    "size_bytes": 1216,
+    "last_modified": "2026-06-01T02:52:21.704641+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/pipeline-runtime-s.md",
+    "file_type": "md",
+    "size_bytes": 141,
+    "last_modified": "2026-06-01T02:52:21.165756+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/presentation.html",
+    "file_type": "html",
+    "size_bytes": 1538,
+    "last_modified": "2026-06-01T02:52:21.166535+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/pytest-runtime-s.md",
+    "file_type": "md",
+    "size_bytes": 138,
+    "last_modified": "2026-06-01T02:52:21.165622+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/visuals/plotly_payloads.json",
+    "file_type": "json",
+    "size_bytes": 43384,
+    "last_modified": "2026-06-01T02:52:21.793731+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "docs/yaml-json-lint-runtime-s.md",
+    "file_type": "md",
+    "size_bytes": 151,
+    "last_modified": "2026-06-01T02:52:21.165880+00:00",
+    "lineage": "Generated from config/blsn_config.yaml"
+  },
+  {
+    "file_name": "config/blsn_config.yaml",
+    "file_type": "yaml",
+    "size_bytes": 1113,
+    "last_modified": "2026-06-01T02:48:00.070585+00:00",
+    "lineage": "Source configuration artifact"
+  }
+]

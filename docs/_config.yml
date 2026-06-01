@@ -1,0 +1,17 @@
+title: GEMINI BLSN Reports
+description: Static BLSN documentation generated from SSOT and telemetry artifacts.
+baseurl: ""
+url: ""
+theme: minima
+markdown: kramdown
+data_dir: _data
+collections:
+  metrics:
+    output: true
+    permalink: /metrics/:name/
+defaults:
+  - scope:
+      path: ""
+      type: metrics
+    values:
+      layout: default

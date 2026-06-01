@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GBOGEB_GEMINI - 2nd Opinion Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; background-color: #f8f9fa; color: #333; }
+        h1, h2 { color: #0056b3; }
+        pre { background: #ebebeb; padding: 15px; border-left: 5px solid #0056b3; font-family: monospace; }
+        .card { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    </style>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+</head>
+<body>
+    <h1>Project Baseline: GBOGEB_GEMINI</h1>
+    <div class="card">
+        <h2>ASCII Lineage Status</h2>
+        <pre>==================================================
+ BLSN REPO DASHBOARD: GBOGEB_GEMINI
+==================================================
+ [REQ-001] System volumetric efficiency verificatio... -> Status: Baseline
+ [REQ-002] Interface boundaries and data lineage... -> Status: Draft
+ [REQ-003] Helium refrigerator volumetric efficienc... -> Status: Active_Review
+==================================================</pre>
+    </div>
+    <div class="card">
+        <h2>Mermaid Lineage Graph</h2>
+        <pre class="mermaid">
+graph TD
+    SSOT[(YAML Configuration)] -->|Parses| Engine[BLSN Python Engine]
+    Engine -->|Validates| REQ-001[REQ-001: Baseline]
+    Engine -->|Validates| REQ-002[REQ-002: Draft]
+    Engine -->|Validates| REQ-003[REQ-003: Active_Review]
+    Engine -->|Compiles| HTML[Interactive HTML Report]
+        </pre>
+    </div>
+</body>
+</html>

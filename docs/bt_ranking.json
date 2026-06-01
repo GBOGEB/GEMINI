@@ -1,0 +1,362 @@
+{
+  "generated_at": "2026-06-01T02:52:21.946529+00:00",
+  "bt_formula": "P(i>j) = p_i / (p_i + p_j)",
+  "pca_strength_vector": {
+    "runtime_seconds": 0.0,
+    "pass_rate": 0.0,
+    "fail_rate": 0.0,
+    "skip_rate": 0.0,
+    "total_tests": 1.0
+  },
+  "global_repo_ranking": [
+    {
+      "rank": 1,
+      "name": "docs/index.html",
+      "strength": 2.533414327,
+      "win_probability_vs_top": 50.0
+    },
+    {
+      "rank": 2,
+      "name": "docs/_includes/metric_card.html",
+      "strength": 2.31775649,
+      "win_probability_vs_top": 47.7773
+    },
+    {
+      "rank": 3,
+      "name": "docs/presentation.html",
+      "strength": 2.309539899,
+      "win_probability_vs_top": 47.6887
+    },
+    {
+      "rank": 4,
+      "name": "docs/_includes/plotly_render.html",
+      "strength": 2.246689134,
+      "win_probability_vs_top": 47.0008
+    },
+    {
+      "rank": 5,
+      "name": "docs/_layouts/default.html",
+      "strength": 2.161843595,
+      "win_probability_vs_top": 46.0431
+    },
+    {
+      "rank": 6,
+      "name": "docs/blsn_report.pdf",
+      "strength": 0.795023512,
+      "win_probability_vs_top": 23.8858
+    },
+    {
+      "rank": 7,
+      "name": "docs/visuals/plotly_payloads.json",
+      "strength": 0.481794349,
+      "win_probability_vs_top": 15.9788
+    },
+    {
+      "rank": 8,
+      "name": "docs/experimental_design_matrix.json",
+      "strength": 0.417306586,
+      "win_probability_vs_top": 14.1425
+    },
+    {
+      "rank": 9,
+      "name": "docs/historical_telemetry_ledger.json",
+      "strength": 0.409256886,
+      "win_probability_vs_top": 13.9077
+    },
+    {
+      "rank": 10,
+      "name": "docs/federation/federation_cherry_pick.json",
+      "strength": 0.382787515,
+      "win_probability_vs_top": 13.1262
+    },
+    {
+      "rank": 11,
+      "name": "docs/kpi_dashboard.json",
+      "strength": 0.381422413,
+      "win_probability_vs_top": 13.0855
+    },
+    {
+      "rank": 12,
+      "name": "config/blsn_config.yaml",
+      "strength": 0.379450387,
+      "win_probability_vs_top": 13.0267
+    },
+    {
+      "rank": 13,
+      "name": "docs/yaml-json-lint-runtime-s.md",
+      "strength": 0.348554028,
+      "win_probability_vs_top": 12.0943
+    },
+    {
+      "rank": 14,
+      "name": "docs/_config.yml",
+      "strength": 0.342094978,
+      "win_probability_vs_top": 11.8968
+    },
+    {
+      "rank": 15,
+      "name": "docs/ci-total-runtime-s.md",
+      "strength": 0.33862951,
+      "win_probability_vs_top": 11.7905
+    },
+    {
+      "rank": 16,
+      "name": "docs/pipeline-runtime-s.md",
+      "strength": 0.338001692,
+      "win_probability_vs_top": 11.7713
+    },
+    {
+      "rank": 17,
+      "name": "docs/pytest-runtime-s.md",
+      "strength": 0.334532216,
+      "win_probability_vs_top": 11.6645
+    }
+  ],
+  "inter_category_ranking": [
+    {
+      "rank": 1,
+      "name": "html",
+      "strength": 11.569243446,
+      "win_probability_vs_top": 50.0
+    },
+    {
+      "rank": 2,
+      "name": "json",
+      "strength": 2.072567748,
+      "win_probability_vs_top": 15.1928
+    },
+    {
+      "rank": 3,
+      "name": "md",
+      "strength": 1.359717445,
+      "win_probability_vs_top": 10.5168
+    },
+    {
+      "rank": 4,
+      "name": "pdf",
+      "strength": 0.795023512,
+      "win_probability_vs_top": 6.43
+    },
+    {
+      "rank": 5,
+      "name": "yaml",
+      "strength": 0.379450387,
+      "win_probability_vs_top": 3.1757
+    },
+    {
+      "rank": 6,
+      "name": "yml",
+      "strength": 0.342094978,
+      "win_probability_vs_top": 2.872
+    }
+  ],
+  "intra_category_ranking": {
+    "html": [
+      {
+        "rank": 1,
+        "name": "docs/index.html",
+        "strength": 2.533414327,
+        "win_probability_vs_top": 50.0
+      },
+      {
+        "rank": 2,
+        "name": "docs/_includes/metric_card.html",
+        "strength": 2.31775649,
+        "win_probability_vs_top": 47.7773
+      },
+      {
+        "rank": 3,
+        "name": "docs/presentation.html",
+        "strength": 2.309539899,
+        "win_probability_vs_top": 47.6887
+      },
+      {
+        "rank": 4,
+        "name": "docs/_includes/plotly_render.html",
+        "strength": 2.246689134,
+        "win_probability_vs_top": 47.0008
+      },
+      {
+        "rank": 5,
+        "name": "docs/_layouts/default.html",
+        "strength": 2.161843595,
+        "win_probability_vs_top": 46.0431
+      }
+    ],
+    "json": [
+      {
+        "rank": 1,
+        "name": "docs/visuals/plotly_payloads.json",
+        "strength": 0.481794349,
+        "win_probability_vs_top": 50.0
+      },
+      {
+        "rank": 2,
+        "name": "docs/experimental_design_matrix.json",
+        "strength": 0.417306586,
+        "win_probability_vs_top": 46.4138
+      },
+      {
+        "rank": 3,
+        "name": "docs/historical_telemetry_ledger.json",
+        "strength": 0.409256886,
+        "win_probability_vs_top": 45.9297
+      },
+      {
+        "rank": 4,
+        "name": "docs/federation/federation_cherry_pick.json",
+        "strength": 0.382787515,
+        "win_probability_vs_top": 44.2743
+      },
+      {
+        "rank": 5,
+        "name": "docs/kpi_dashboard.json",
+        "strength": 0.381422413,
+        "win_probability_vs_top": 44.1862
+      }
+    ],
+    "md": [
+      {
+        "rank": 1,
+        "name": "docs/yaml-json-lint-runtime-s.md",
+        "strength": 0.348554028,
+        "win_probability_vs_top": 50.0
+      },
+      {
+        "rank": 2,
+        "name": "docs/ci-total-runtime-s.md",
+        "strength": 0.33862951,
+        "win_probability_vs_top": 49.2779
+      },
+      {
+        "rank": 3,
+        "name": "docs/pipeline-runtime-s.md",
+        "strength": 0.338001692,
+        "win_probability_vs_top": 49.2315
+      },
+      {
+        "rank": 4,
+        "name": "docs/pytest-runtime-s.md",
+        "strength": 0.334532216,
+        "win_probability_vs_top": 48.9736
+      }
+    ],
+    "pdf": [
+      {
+        "rank": 1,
+        "name": "docs/blsn_report.pdf",
+        "strength": 0.795023512,
+        "win_probability_vs_top": 50.0
+      }
+    ],
+    "yaml": [
+      {
+        "rank": 1,
+        "name": "config/blsn_config.yaml",
+        "strength": 0.379450387,
+        "win_probability_vs_top": 50.0
+      }
+    ],
+    "yml": [
+      {
+        "rank": 1,
+        "name": "docs/_config.yml",
+        "strength": 0.342094978,
+        "win_probability_vs_top": 50.0
+      }
+    ]
+  },
+  "qplant_requirements_ranking": {
+    "global": [
+      {
+        "rank": 1,
+        "name": "ci_total_runtime_s",
+        "strength": 1e-09,
+        "win_probability_vs_top": 50.0
+      },
+      {
+        "rank": 2,
+        "name": "pytest_runtime_s",
+        "strength": 1e-09,
+        "win_probability_vs_top": 50.0
+      },
+      {
+        "rank": 3,
+        "name": "pipeline_runtime_s",
+        "strength": 1e-09,
+        "win_probability_vs_top": 50.0
+      },
+      {
+        "rank": 4,
+        "name": "yaml_json_lint_runtime_s",
+        "strength": 1e-09,
+        "win_probability_vs_top": 50.0
+      }
+    ],
+    "by_category": {
+      "Performance": [
+        {
+          "rank": 1,
+          "name": "ci_total_runtime_s",
+          "strength": 1e-09,
+          "win_probability_vs_top": 50.0
+        },
+        {
+          "rank": 2,
+          "name": "pytest_runtime_s",
+          "strength": 1e-09,
+          "win_probability_vs_top": 50.0
+        },
+        {
+          "rank": 3,
+          "name": "pipeline_runtime_s",
+          "strength": 1e-09,
+          "win_probability_vs_top": 50.0
+        },
+        {
+          "rank": 4,
+          "name": "yaml_json_lint_runtime_s",
+          "strength": 1e-09,
+          "win_probability_vs_top": 50.0
+        }
+      ]
+    },
+    "federation_external_global": [],
+    "global_with_federation": [
+      {
+        "rank": 1,
+        "name": "ci_total_runtime_s",
+        "strength": 1e-09,
+        "win_probability_vs_top": 50.0
+      },
+      {
+        "rank": 2,
+        "name": "pytest_runtime_s",
+        "strength": 1e-09,
+        "win_probability_vs_top": 50.0
+      },
+      {
+        "rank": 3,
+        "name": "pipeline_runtime_s",
+        "strength": 1e-09,
+        "win_probability_vs_top": 50.0
+      },
+      {
+        "rank": 4,
+        "name": "yaml_json_lint_runtime_s",
+        "strength": 1e-09,
+        "win_probability_vs_top": 50.0
+      }
+    ]
+  },
+  "federation_sources": {
+    "codex": {
+      "repo": "GBOGEB/CODEX",
+      "downloaded_files": {}
+    },
+    "abacus": {
+      "repo": "GBOGEB/ABACUS",
+      "downloaded_files": {}
+    }
+  }
+}

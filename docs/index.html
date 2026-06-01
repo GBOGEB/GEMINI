@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-density="comfortable" data-audience="engineer">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BLSN Report — P3 Orion</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <style>
+    /* ── Design Tokens: Light (default) ────────────────────────────────── */
+    :root, [data-theme="light"] {
+      --bg-page:    #f8fafc;
+      --bg-card:    #ffffff;
+      --bg-muted:   #f1f5f9;
+      --bg-header:  #f8fafc;
+      --border:     #e2e8f0;
+      --text-1:     #0f172a;
+      --text-2:     #475569;
+      --text-3:     #94a3b8;
+      --accent:     #6366f1;
+      --accent-bg:  #eef2ff;
+      --pass-text:  #15803d;
+      --pass-bg:    #f0fdf4;
+      --warn-text:  #b45309;
+      --warn-bg:    #fffbeb;
+      --fail-text:  #b91c1c;
+      --fail-bg:    #fef2f2;
+      --shadow:     0 1px 3px 0 rgb(0 0 0 / 0.07);
+    }
+    /* ── Design Tokens: Dark ────────────────────────────────────────────── */
+    [data-theme="dark"] {
+      --bg-page:    #0f172a;
+      --bg-card:    #1e293b;
+      --bg-muted:   #1e293b;
+      --bg-header:  #1e293b;
+      --border:     #334155;
+      --text-1:     #f1f5f9;
+      --text-2:     #94a3b8;
+      --text-3:     #64748b;
+      --accent:     #818cf8;
+      --accent-bg:  #1e1b4b;
+      --pass-text:  #4ade80;
+      --pass-bg:    #052e16;
+      --warn-text:  #fbbf24;
+      --warn-bg:    #1c1400;
+      --fail-text:  #f87171;
+      --fail-bg:    #1c0505;
+      --shadow:     0 1px 3px 0 rgb(0 0 0 / 0.3);
+    }
+    /* ── Density Scale ──────────────────────────────────────────────────── */
+    /* Default (comfortable) spacing: these vars are overridden per density. */
+    :root {
+      --d-py:   0.75rem;   /* table cell vertical padding  */
+      --d-px:   1rem;      /* table cell horizontal padding */
+      --d-gap:  1rem;      /* grid/flex gap                 */
+      --d-card: 1.5rem;    /* card padding                  */
+    }
+    [data-density="compact"]  { --d-py: 0.35rem;  --d-px: 0.625rem; --d-gap: 0.5rem;  --d-card: 1rem;  font-size: 0.875rem; }
+    [data-density="spacious"] { --d-py: 1.125rem; --d-px: 1.375rem; --d-gap: 1.5rem;  --d-card: 2rem; }
+    /* ── Audience Gating ────────────────────────────────────────────────── */
+    /* Sections marked .aud-manager are hidden for the executive audience.
+       Sections marked .aud-engineer are hidden for executive and manager.   */
+    [data-audience="executive"] .aud-manager,
+    [data-audience="executive"] .aud-engineer { display: none; }
+    [data-audience="manager"]   .aud-engineer { display: none; }
+    /* ── Base Styles ────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      background: var(--bg-page);
+      color: var(--text-1);
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      margin: 0; padding: 0;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    main { max-width: 64rem; margin: 0 auto; padding: 2.5rem 1.5rem; }
+    /* ── Controls Bar ───────────────────────────────────────────────────── */
+    .ctrl-bar {
+      position: sticky; top: 0; z-index: 20;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 1.5rem;
+      display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+      box-shadow: var(--shadow);
+    }
+    .ctrl-brand { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.15em; color: var(--accent); margin-right: auto; text-transform: uppercase; }
+    .ctrl-group { display: flex; align-items: center; gap: 0.35rem; }
+    .ctrl-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
+    .ctrl-select, .ctrl-btn {
+      font-size: 0.78rem; padding: 0.2rem 0.5rem;
+      border: 1px solid var(--border); border-radius: 0.375rem;
+      background: var(--bg-muted); color: var(--text-1); cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .ctrl-select:hover, .ctrl-btn:hover { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+    .ctrl-btn--active { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
+    /* ── Cards ──────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: var(--d-card);
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow);
+    }
+    .card-title { font-size: 1.125rem; font-weight: 600; color: var(--text-1); margin: 0 0 1rem; }
+    .card-subtitle { font-size: 0.95rem; font-weight: 600; color: var(--text-1); margin: 1.25rem 0 0.625rem; }
+    /* ── KPI Grid ───────────────────────────────────────────────────────── */
+    .kpi-grid { display: grid; gap: var(--d-gap); grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); margin-top: 1.25rem; }
+    .kpi-cell { background: var(--bg-muted); border-radius: 0.75rem; padding: var(--d-py) var(--d-px); }
+    .kpi-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); margin: 0; }
+    .kpi-value { font-size: 1.1rem; font-weight: 600; color: var(--text-1); margin: 0.2rem 0 0; }
+    /* ── Tables ─────────────────────────────────────────────────────────── */
+    .tbl-wrap { border-radius: 0.75rem; overflow: hidden; border: 1px solid var(--border); margin-top: 1rem; }
+    table { width: 100%; border-collapse: collapse; background: var(--bg-card); }
+    thead tr { background: var(--bg-header); }
+    thead th {
+      padding: var(--d-py) var(--d-px);
+      text-align: left; font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2);
+    }
+    tbody td { padding: var(--d-py) var(--d-px); color: var(--text-2); border-top: 1px solid var(--border); font-size: 0.875rem; }
+    /* Row-level status tints driven by tr.pass / tr.warn / tr.fail classes.
+       These interact with the CSS token system so they invert correctly
+       in dark mode without any extra JavaScript. */
+    tbody tr.pass td { background: var(--pass-bg); color: var(--pass-text); }
+    tbody tr.warn td { background: var(--warn-bg); color: var(--warn-text); }
+    tbody tr.fail td { background: var(--fail-bg); color: var(--fail-text); }
+    /* ── Status Labels ──────────────────────────────────────────────────── */
+    .status-pass { color: var(--pass-text); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .status-warn { color: var(--warn-text); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .status-fail { color: var(--fail-text); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    /* ── Badge ──────────────────────────────────────────────────────────── */
+    .badge { display: inline-block; border-radius: 999px; padding: 0.15rem 0.625rem; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; }
+    .badge-accent { background: var(--accent-bg); color: var(--accent); }
+    /* ── Inline code ─────────────────────────────────────────────────────── */
+    code { background: var(--bg-muted); border-radius: 0.25rem; padding: 0.1em 0.35em; font-size: 0.85em; color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <!-- ── Controls Bar: Theme / Density / Audience toggles ─────────────────
+       Preferences are persisted to localStorage under the "blsn_" namespace
+       so they survive page reloads. Selecting "auto" theme follows the OS
+       light/dark preference via the prefers-color-scheme media query.       -->
+  <nav class="ctrl-bar" role="toolbar" aria-label="Display controls">
+    <span class="ctrl-brand">BLSN</span>
+
+    <div class="ctrl-group">
+      <span class="ctrl-label" id="lbl-theme">Theme</span>
+      <select id="ctrl-theme" class="ctrl-select" onchange="setTheme(this.value)" aria-labelledby="lbl-theme">
+        <option value="light">☀ Light</option>
+        <option value="dark">🌙 Dark</option>
+        <option value="auto">⚙ Auto</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <span class="ctrl-label" id="lbl-density">Density</span>
+      <select id="ctrl-density" class="ctrl-select" onchange="setDensity(this.value)" aria-labelledby="lbl-density">
+        <option value="compact">Compact</option>
+        <option value="comfortable">Comfortable</option>
+        <option value="spacious">Spacious</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <span class="ctrl-label" id="lbl-audience">Audience</span>
+      <select id="ctrl-audience" class="ctrl-select" onchange="setAudience(this.value)" aria-labelledby="lbl-audience">
+        <option value="executive">Executive</option>
+        <option value="manager">Manager</option>
+        <option value="engineer">Engineer</option>
+      </select>
+    </div>
+  </nav>
+
+  <main>
+    
+    <!-- ── Wave 15: Regression & Drift Alert Banner (visible to ALL audiences) -->
+    <div role="status" style="
+        margin:1rem 0;padding:0.75rem 1.25rem;
+        background:var(--pass-bg);color:var(--pass-text);
+        border:1.5px solid var(--pass-text);border-radius:0.75rem;
+        font-size:0.875rem;line-height:1.6;">
+      <strong>✅ Wave 15 — No Drift or Regression Detected</strong>
+      <span style="margin-left:0.75rem;font-size:0.8rem;opacity:0.8">No drift detected (Z=0.00, threshold=±3.0σ).</span>
+    </div>
+
+    <!-- ── Header / Overview  (visible to ALL audiences) ──────────────── -->
+    <header class="card">
+      <p style="font-size:0.68rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-3);margin:0">BLSN</p>
+      <h1 style="margin:0.4rem 0 0;font-size:1.875rem;font-weight:700;letter-spacing:-0.02em;color:var(--text-1)">Synthetic Validation Report</h1>
+      <p style="margin:0.4rem 0 0;font-size:0.8rem;color:var(--text-3)">
+        Theme&nbsp;<strong style="color:var(--text-2)">light</strong>
+        &nbsp;·&nbsp;Density&nbsp;<strong style="color:var(--text-2)">comfortable</strong>
+        &nbsp;·&nbsp;Audience&nbsp;<strong style="color:var(--text-2)">engineer</strong>
+      </p>
+      <div class="kpi-grid">
+        <div class="kpi-cell"><p class="kpi-label">Vehicle</p><p class="kpi-value">P3 Orion</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Cooling Mode</p><p class="kpi-value">helium_closed_loop</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Nominal Flow</p><p class="kpi-value">110 g/s</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Limits</p><p class="kpi-value">80–140 g/s</p></div>
+      </div>
+    </header>
+
+    <!-- ── Sanity Check Telemetry  (visible to ALL audiences) ─────────── -->
+    <section class="card">
+      <h2 class="card-title">Sanity Check Telemetry</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Status</th><th>Message</th></tr></thead>
+          <tbody><tr class="pass"><td><span class="status-pass">PASS</span></td><td>[PASS] PASS | Nominal mass flow is bounded by configured limits</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── System Verification KPI  (visible to ALL audiences) ──────────
+         Executive audience sees the high-level pass/fail verdict; manager
+         and engineer audiences see the full ratio breakdown too.            -->
+    <section class="card">
+      <h2 class="card-title">System Verification: Claimed vs. Actual</h2>
+      <p style="margin:0 0 1rem;padding:0.75rem 1rem;background:var(--pass-bg);border-radius:0.5rem;font-size:0.875rem;color:var(--pass-text)">
+        Claimed Limits: <strong>0</strong>
+        &nbsp;|&nbsp; Actually Tested: <strong>0</strong>
+        &nbsp;→ STATUS: <strong>UNKNOWN</strong>
+      </p>
+      <div class="kpi-grid">
+        <div class="kpi-cell"><p class="kpi-label">Total Runtime</p><p class="kpi-value">0.00s</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Pass Ratio</p><p class="kpi-value" style="color:var(--pass-text)">0.0%</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Fail Ratio</p><p class="kpi-value" style="color:var(--fail-text)">0.0%</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Skip Ratio</p><p class="kpi-value" style="color:var(--warn-text)">0.0%</p></div>
+      </div>
+    </section>
+
+    <!-- ── Tuple Execution Telemetry Targets  (manager + engineer) ──────
+         Executive summary omits detailed threshold tables; managers and
+         engineers see the full target / warn / fail breakdown.              -->
+    <section class="card aud-manager">
+      <h2 class="card-title">Tuple Execution Telemetry Targets (seconds)</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Metric</th><th>Target</th><th>Warn</th><th>Fail</th></tr></thead>
+          <tbody><tr><td style="font-weight:500;color:var(--text-1)">ci_total_runtime_s</td><td style="color:var(--pass-text)">120.0</td><td style="color:var(--warn-text)">180.0</td><td style="color:var(--fail-text)">240.0</td></tr>
+<tr><td style="font-weight:500;color:var(--text-1)">pytest_runtime_s</td><td style="color:var(--pass-text)">15.0</td><td style="color:var(--warn-text)">25.0</td><td style="color:var(--fail-text)">35.0</td></tr>
+<tr><td style="font-weight:500;color:var(--text-1)">pipeline_runtime_s</td><td style="color:var(--pass-text)">5.0</td><td style="color:var(--warn-text)">10.0</td><td style="color:var(--fail-text)">15.0</td></tr>
+<tr><td style="font-weight:500;color:var(--text-1)">yaml_json_lint_runtime_s</td><td style="color:var(--pass-text)">3.0</td><td style="color:var(--warn-text)">6.0</td><td style="color:var(--fail-text)">9.0</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Interactive Plotly Visualizations  (manager + engineer) ──────
+         Charts use transparent backgrounds for seamless light/dark mode;
+         the audience-tab buttons below toggle between Executive and
+         Engineering views without reloading the page.                      -->
+    <section class="card aud-manager">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+        <h2 class="card-title" style="margin:0">Analytics Dashboard</h2>
+        <!-- Audience tab buttons -->
+        <div style="display:flex;gap:0.5rem;">
+          <button id="btn-exec" class="ctrl-btn ctrl-btn--active" onclick="switchChartView('executive')">Executive View</button>
+          <button id="btn-eng"  class="ctrl-btn" onclick="switchChartView('engineering')">Engineering View</button>
+        </div>
+      </div>
+      <div id="view-executive" style="display:block;">
+        <div id="plotly-telemetry-chart" style="width:100%;min-height:450px;border-radius:0.5rem;overflow:hidden;"></div>
+      </div>
+      <div id="view-engineering" style="display:none;">
+        <div id="plotly-pca-chart" style="width:100%;min-height:450px;border-radius:0.5rem;overflow:hidden;"></div>
+      </div>
+    </section>
+
+    <!-- ── Bradley-Terry Ranking  (manager + engineer) ──────────────────
+         Pairwise comparison ranking for global repo, inter-category,
+         and QPLANT requirements.                                            -->
+    <section class="card aud-manager">
+      <h2 class="card-title">System Priority &amp; Bottleneck Ranking (Bradley-Terry)</h2>
+      <p style="font-size:0.85rem;color:var(--text-2);margin:0 0 0.75rem">Pairwise probability model: <code>P(i &gt; j) = p_i / (p_i + p_j)</code></p>
+      <h3 class="card-subtitle">Global Repo Ranking</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Rank</th><th>Artifact</th><th>BT Strength</th><th>Win Prob vs Top</th></tr></thead>
+          <tbody><tr><td>1</td><td>docs/index.html</td><td>2.533414</td><td>50.00%</td></tr>
+<tr><td>2</td><td>docs/_includes/metric_card.html</td><td>2.317756</td><td>47.78%</td></tr>
+<tr><td>3</td><td>docs/presentation.html</td><td>2.309540</td><td>47.69%</td></tr>
+<tr><td>4</td><td>docs/_includes/plotly_render.html</td><td>2.246689</td><td>47.00%</td></tr>
+<tr><td>5</td><td>docs/_layouts/default.html</td><td>2.161844</td><td>46.04%</td></tr>
+<tr><td>6</td><td>docs/blsn_report.pdf</td><td>0.795024</td><td>23.89%</td></tr>
+<tr><td>7</td><td>docs/visuals/plotly_payloads.json</td><td>0.481794</td><td>15.98%</td></tr>
+<tr><td>8</td><td>docs/experimental_design_matrix.json</td><td>0.417307</td><td>14.14%</td></tr>
+<tr><td>9</td><td>docs/historical_telemetry_ledger.json</td><td>0.409257</td><td>13.91%</td></tr>
+<tr><td>10</td><td>docs/federation/federation_cherry_pick.json</td><td>0.382788</td><td>13.13%</td></tr></tbody>
+        </table>
+      </div>
+      <h3 class="card-subtitle">Inter-Category Ranking</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Rank</th><th>Category</th><th>Win Prob vs Top</th></tr></thead>
+          <tbody><tr><td>1</td><td>html</td><td>50.00%</td></tr>
+<tr><td>2</td><td>json</td><td>15.19%</td></tr>
+<tr><td>3</td><td>md</td><td>10.52%</td></tr>
+<tr><td>4</td><td>pdf</td><td>6.43%</td></tr>
+<tr><td>5</td><td>yaml</td><td>3.18%</td></tr>
+<tr><td>6</td><td>yml</td><td>2.87%</td></tr></tbody>
+        </table>
+      </div>
+      <h3 class="card-subtitle">QPLANT Requirements Ranking Bridge</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Rank</th><th>Requirement</th><th>Win Prob vs Top</th></tr></thead>
+          <tbody><tr><td>1</td><td>ci_total_runtime_s</td><td>50.00%</td></tr>
+<tr><td>2</td><td>pytest_runtime_s</td><td>50.00%</td></tr>
+<tr><td>3</td><td>pipeline_runtime_s</td><td>50.00%</td></tr>
+<tr><td>4</td><td>yaml_json_lint_runtime_s</td><td>50.00%</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── SPC, DoE & PCA Proof  (engineer only) ────────────────────────
+         Full statistical detail: runtime drift, historical success rate,
+         DoE factor map and principal-component analysis eigenvalues.        -->
+    <section class="card aud-engineer">
+      <h2 class="card-title">Wave 12: SPC &amp; Telemetry Stats</h2>
+      <div class="kpi-grid">
+        <div class="kpi-cell"><p class="kpi-label">Runtime Drift</p><p class="kpi-value">0.0000s</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Prev Moving Avg</p><p class="kpi-value">0.0000s</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Total Runs</p><p class="kpi-value">2</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Success Rate</p><p class="kpi-value" style="color:var(--pass-text)">100.0%</p></div>
+      </div>
+      <p style="font-size:0.875rem;color:var(--text-2);margin-top:1rem">
+        DoE Factors — A: <strong>python_version</strong> · B: <strong>os_type</strong> · C: <strong>load_parameter</strong>
+      </p>
+      <h3 class="card-subtitle">Principal Component Analysis (PCA Proof)</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Principal Component</th><th>Eigenvalue</th><th>Explained Variance</th><th>Highest Weight Variable</th></tr></thead>
+          <tbody><tr><td>PC1</td><td>0.000000</td><td>0.00%</td><td>total_tests</td></tr>
+<tr><td>PC2</td><td>0.000000</td><td>0.00%</td><td>skip_rate</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Metric Markdown Slugs  (engineer only) ───────────────────────
+         Quick-links to generated per-metric markdown pages plus inline
+         previews of the threshold bullet points.                            -->
+    <section class="card aud-engineer">
+      <h2 class="card-title">Metric Markdown Slugs</h2>
+      <ul style="margin:0 0 1rem;padding-left:1.25rem;font-size:0.875rem;line-height:2"><li><a style="color:var(--accent)" href="ci-total-runtime-s.md">Ci Total Runtime S</a></li>
+<li><a style="color:var(--accent)" href="pytest-runtime-s.md">Pytest Runtime S</a></li>
+<li><a style="color:var(--accent)" href="pipeline-runtime-s.md">Pipeline Runtime S</a></li>
+<li><a style="color:var(--accent)" href="yaml-json-lint-runtime-s.md">Yaml Json Lint Runtime S</a></li></ul>
+      <div style="display:grid;gap:var(--d-gap)"><article style="border-radius:0.75rem;border:1px solid var(--border);background:var(--bg-card);padding:1rem;"><h3 style="margin:0 0 0.5rem;font-size:0.95rem;font-weight:600;color:var(--text-1)">Ci Total Runtime S</h3><ul style="margin:0;padding-left:1.25rem;font-size:0.875rem;color:var(--text-2);line-height:1.7"><li>Metric ID: `ci_total_runtime_s`</li><li>Target Threshold: **120.0s**</li><li>Warn Threshold: **180.0s**</li><li>Fail Threshold: **240.0s**</li></ul></article>
+<article style="border-radius:0.75rem;border:1px solid var(--border);background:var(--bg-card);padding:1rem;"><h3 style="margin:0 0 0.5rem;font-size:0.95rem;font-weight:600;color:var(--text-1)">Pytest Runtime S</h3><ul style="margin:0;padding-left:1.25rem;font-size:0.875rem;color:var(--text-2);line-height:1.7"><li>Metric ID: `pytest_runtime_s`</li><li>Target Threshold: **15.0s**</li><li>Warn Threshold: **25.0s**</li><li>Fail Threshold: **35.0s**</li></ul></article>
+<article style="border-radius:0.75rem;border:1px solid var(--border);background:var(--bg-card);padding:1rem;"><h3 style="margin:0 0 0.5rem;font-size:0.95rem;font-weight:600;color:var(--text-1)">Pipeline Runtime S</h3><ul style="margin:0;padding-left:1.25rem;font-size:0.875rem;color:var(--text-2);line-height:1.7"><li>Metric ID: `pipeline_runtime_s`</li><li>Target Threshold: **5.0s**</li><li>Warn Threshold: **10.0s**</li><li>Fail Threshold: **15.0s**</li></ul></article>
+<article style="border-radius:0.75rem;border:1px solid var(--border);background:var(--bg-card);padding:1rem;"><h3 style="margin:0 0 0.5rem;font-size:0.95rem;font-weight:600;color:var(--text-1)">Yaml Json Lint Runtime S</h3><ul style="margin:0;padding-left:1.25rem;font-size:0.875rem;color:var(--text-2);line-height:1.7"><li>Metric ID: `yaml_json_lint_runtime_s`</li><li>Target Threshold: **3.0s**</li><li>Warn Threshold: **6.0s**</li><li>Fail Threshold: **9.0s**</li></ul></article></div>
+    </section>
+
+    <!-- ── Mermaid Architecture Diagram  (engineer only) ────────────────
+         Shows the data-flow from SSOT config through the pipeline to all
+         output artefacts.  Requires mermaid.js loaded externally.          -->
+    <section class="card aud-engineer" style="background:linear-gradient(135deg,var(--bg-card) 0%,var(--accent-bg) 100%)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem">
+        <h2 class="card-title" style="margin:0">Mermaid System Flow</h2>
+        <span class="badge badge-accent">Diagram</span>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:0.75rem;padding:1rem">
+        <div class="mermaid">
+          graph LR;
+            SSOT[SSOT Config] --> PIPELINE[Pipeline Execution];
+            PIPELINE --> MARKDOWN[Markdown Slug Pages];
+            PIPELINE --> INDEX[Index HTML];
+            PIPELINE --> SLIDES[Slides HTML];
+            INDEX --> PDF[PDF Export];
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    /* ── BLSN Report UI Controls ─────────────────────────────────────────
+       All user preferences are persisted to localStorage under the "blsn_"
+       namespace so they survive hard reloads without server round-trips.
+
+       Theme:    light | dark | auto
+         "auto" resolves to light or dark via prefers-color-scheme and keeps
+         the <html data-theme> attribute updated when the OS preference
+         changes (e.g. switching between light and dark system themes).
+
+       Density:  compact | comfortable | spacious
+         Controls the --d-py / --d-px / --d-gap / --d-card CSS tokens that
+         scale table cell padding and card gutters without reflowing the page.
+
+       Audience: executive | manager | engineer
+         CSS [data-audience] selectors hide .aud-manager and .aud-engineer
+         sections for less technical readers.  Changing this value simply
+         updates the data attribute; no DOM nodes are added or removed.
+
+       Plotly charts are re-rendered via Plotly.react() rather than
+       Plotly.newPlot() when the theme changes so the existing DOM element
+       is reused and transitions feel instant.
+    ── */
+    (function () {
+      'use strict';
+
+      const PREF_NS = 'blsn_';
+      const getPref = (k, def) => localStorage.getItem(PREF_NS + k) || def;
+      const setPref = (k, v)   => localStorage.setItem(PREF_NS + k, v);
+
+      const root = document.documentElement;
+
+      /* Resolve the "auto" theme sentinel using the OS preference. */
+      function resolveTheme(raw) {
+        if (raw !== 'auto') return raw;
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+
+      /* Apply a data-attribute and keep its matching <select> in sync. */
+      function applyAttr(attr, selectId, value) {
+        root.setAttribute('data-' + attr, value);
+        const el = document.getElementById(selectId);
+        if (el) el.value = value;
+        setPref(attr, value);
+      }
+
+      /* ── Plotly theme-aware rendering ──────────────────────────────── */
+      let _payload = null;  /* cached payload to allow re-render on theme change */
+
+      /* Patch a Plotly chart layout for dynamic font/grid colours.
+         Backgrounds stay transparent (set by Python); only text and grid
+         colours are adjusted so light/dark switching works seamlessly.    */
+      function patchLayout(chart, themeRaw) {
+        const isDark = resolveTheme(themeRaw) === 'dark';
+        const gridColor = isDark ? '#334155' : '#e2e8f0';
+        const fontColor = isDark ? '#94a3b8' : '#475569';
+        return Object.assign({}, chart.layout || {}, {
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor:  'rgba(0,0,0,0)',
+          font:          { color: fontColor },
+          xaxis: Object.assign({}, (chart.layout || {}).xaxis, { gridcolor: gridColor, zerolinecolor: gridColor }),
+          yaxis: Object.assign({}, (chart.layout || {}).yaxis, { gridcolor: gridColor, zerolinecolor: gridColor }),
+        });
+      }
+
+      /* Re-render both Plotly charts with the resolved theme.
+         Reads from audience-structured payload (executive / engineering). */
+      function rerenderPlotly(themeRaw) {
+        if (!window.Plotly || !_payload) return;
+        const audience = _payload.audience || {};
+        const tel = (audience.executive   || {}).telemetry_combo  || {};
+        const pca = (audience.engineering || {}).pca_bottlenecks  || {};
+        Plotly.react('plotly-telemetry-chart', tel.data || [], patchLayout(tel, themeRaw));
+        Plotly.react('plotly-pca-chart',        pca.data || [], patchLayout(pca, themeRaw));
+      }
+
+      /* ── Chart-view audience tab toggle ─────────────────────────────── */
+      window.switchChartView = function (view) {
+        const viewExec = document.getElementById('view-executive');
+        const viewEng  = document.getElementById('view-engineering');
+        const btnExec  = document.getElementById('btn-exec');
+        const btnEng   = document.getElementById('btn-eng');
+        if (!viewExec || !viewEng) return;
+        const isExec = view === 'executive';
+        viewExec.style.display = isExec ? 'block' : 'none';
+        viewEng.style.display  = isExec ? 'none'  : 'block';
+        if (btnExec) btnExec.classList.toggle('ctrl-btn--active', isExec);
+        if (btnEng)  btnEng.classList.toggle('ctrl-btn--active', !isExec);
+        /* Trigger resize so Plotly fills a div that was previously hidden. */
+        window.dispatchEvent(new Event('resize'));
+      };
+
+      /* ── Public setters wired to onchange handlers ─────────────────── */
+      window.setTheme = function (v) {
+        /* Apply the resolved value to data-theme but store the raw choice
+           (including "auto") so the select always reflects user intent.   */
+        root.setAttribute('data-theme', resolveTheme(v));
+        const el = document.getElementById('ctrl-theme');
+        if (el) el.value = v;
+        setPref('theme', v);
+        rerenderPlotly(v);
+      };
+      window.setDensity  = (v) => applyAttr('density',  'ctrl-density',  v);
+      window.setAudience = (v) => applyAttr('audience', 'ctrl-audience', v);
+
+      /* ── Initialise from saved preferences (fall back to SSOT defaults) */
+      const initTheme    = getPref('theme',    'light');
+      const initDensity  = getPref('density',  'comfortable');
+      const initAudience = getPref('audience', 'engineer');
+
+      /* Apply theme without going through the setter so the select shows
+         "auto" rather than the resolved value when stored as "auto".      */
+      root.setAttribute('data-theme', resolveTheme(initTheme));
+      const themeEl = document.getElementById('ctrl-theme');
+      if (themeEl) themeEl.value = initTheme;
+
+      applyAttr('density',  'ctrl-density',  initDensity);
+      applyAttr('audience', 'ctrl-audience', initAudience);
+
+      /* ── Plotly payload fetch ──────────────────────────────────────── */
+      const emptyLayout = () => ({
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor:  'rgba(0,0,0,0)',
+        xaxis: { visible: false },
+        yaxis: { visible: false },
+        annotations: [{
+          text: 'No Plotly payload available',
+          showarrow: false, xref: 'paper', yref: 'paper', x: 0.5, y: 0.5,
+        }],
+      });
+
+      fetch('visuals/plotly_payloads.json')
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+        .then((payload) => {
+          _payload = payload;
+          rerenderPlotly(getPref('theme', 'light'));
+        })
+        .catch(() => {
+          const el = emptyLayout();
+          Plotly.newPlot('plotly-telemetry-chart', [], el);
+          Plotly.newPlot('plotly-pca-chart',        [], el);
+        });
+
+      /* Keep "auto" theme in sync when the OS preference changes at runtime
+         (e.g. user switches system dark mode while the tab is open).       */
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        const stored = getPref('theme', 'light');
+        if (stored === 'auto') {
+          root.setAttribute('data-theme', resolveTheme('auto'));
+          rerenderPlotly('auto');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

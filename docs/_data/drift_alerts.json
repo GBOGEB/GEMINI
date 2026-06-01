@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-06-01T03:25:11.863986+00:00",
+  "wave": "15",
+  "any_alert": false,
+  "drift": {
+    "drift_detected": false,
+    "z_score": 0.0,
+    "mean_runtime_s": 0.0,
+    "std_runtime_s": 0.0,
+    "current_runtime_s": 0.0,
+    "delta_pct": 0.0,
+    "window_size": 2,
+    "sigma_threshold": 3.0,
+    "insufficient_data": false,
+    "details": "No drift detected (Z=0.00, threshold=\u00b13.0\u03c3)."
+  },
+  "regression": {
+    "regression_detected": false,
+    "factor_levels_analyzed": [
+      "unknown-python"
+    ],
+    "comparisons": [],
+    "scipy_available": true,
+    "summary": "No factor-level comparisons available (need \u22652 distinct python_version levels with \u22652 samples each)."
+  }
+}

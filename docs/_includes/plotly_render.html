@@ -1,0 +1,48 @@
+{% assign chart = site.data.plotly_payloads.charts[include.chart_id] %}
+<div id="plotly-{{ include.chart_id }}" style="width:100%;min-height:420px;border-radius:0.5rem;overflow:hidden;"></div>
+<script>
+  (function () {
+    var chartId  = 'plotly-{{ include.chart_id }}';
+    var chart    = {{ chart | jsonify }};
+    var element  = document.getElementById(chartId);
+    if (!element || !chart) { return; }
+
+    /* Choose the correct Plotly built-in template based on the active theme
+       so charts always match the page colour scheme, including dark mode.  */
+    function resolvedTheme() {
+      return document.documentElement.getAttribute('data-theme') || 'light';
+    }
+    function plotlyTemplate(theme) {
+      return theme === 'dark' ? 'plotly_dark' : 'plotly_white';
+    }
+
+    /* Build a layout that inherits the page theme and uses transparent
+       backgrounds so the card colour shows through correctly.             */
+    function buildLayout(theme) {
+      var isDark = (theme === 'dark');
+      return Object.assign({}, chart.layout || {}, {
+        template:      plotlyTemplate(theme),
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor:  'rgba(0,0,0,0)',
+        font:          { color: isDark ? '#94a3b8' : '#475569' },
+        xaxis: Object.assign({}, (chart.layout || {}).xaxis, { gridcolor: isDark ? '#334155' : '#e2e8f0' }),
+        yaxis: Object.assign({}, (chart.layout || {}).yaxis, { gridcolor: isDark ? '#334155' : '#e2e8f0' }),
+      });
+    }
+
+    Plotly.newPlot(element, chart.data || [], buildLayout(resolvedTheme()));
+
+    /* Re-render on theme toggle so the chart stays in sync with the page.
+       The observer is disconnected if the chart element is removed from the
+       DOM (e.g. by SPA navigation or dynamic content replacement) to avoid
+       memory leaks from orphaned observers.                                */
+    var observer = new MutationObserver(function () {
+      if (!document.contains(element)) {
+        observer.disconnect();
+        return;
+      }
+      Plotly.react(element, chart.data || [], buildLayout(resolvedTheme()));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  })();
+</script>
