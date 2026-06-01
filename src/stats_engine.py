@@ -1,4 +1,4 @@
-"""Wave 12 statistical process control and DoE foundation engine."""
+"""Wave 12/15 statistical process control, DoE foundation, and drift detection engine."""
 
 from __future__ import annotations
 
@@ -6,9 +6,18 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import plotly.graph_objects as go
+
+try:
+    from scipy import stats as _scipy_stats  # type: ignore[import-untyped]
+
+    _SCIPY_AVAILABLE = True
+except ImportError:  # pragma: no cover - optional at import time
+    _scipy_stats = None  # type: ignore[assignment]
+    _SCIPY_AVAILABLE = False
 
 # Standardized dashboard palette (Tailwind Cyan / Emerald / Rose / Slate)
 COLORS = {
@@ -27,6 +36,12 @@ DOE_MATRIX_PATH = DOCS_DIR / "experimental_design_matrix.json"
 KPI_DASHBOARD_PATH = DOCS_DIR / "kpi_dashboard.json"
 VISUALS_DIR = DOCS_DIR / "visuals"
 PLOTLY_PAYLOAD_PATH = VISUALS_DIR / "plotly_payloads.json"
+DRIFT_ALERTS_PATH = DOCS_DIR / "_data" / "drift_alerts.json"
+
+# Wave 15 constants
+_DRIFT_WINDOW = 10        # number of historical runs used for the moving baseline
+_DRIFT_SIGMA = 3.0        # Z-score threshold (3σ rule)
+_TTEST_ALPHA = 0.05       # significance level for regression T-test
 
 
 def _load_json(path: Path, default: dict) -> dict:
@@ -160,6 +175,198 @@ def calculate_deltas(current_run: dict, previous_runs: list[dict]) -> dict:
         "previous_runtime_moving_avg": round(runtime_avg, 6),
         "previous_pass_rate_moving_avg": round(pass_rate_avg, 6),
         "previous_fail_rate_moving_avg": round(fail_rate_avg, 6),
+    }
+
+
+def detect_drift(
+    current_run: dict[str, Any],
+    historical_ledger: dict[str, Any],
+    window: int = _DRIFT_WINDOW,
+    sigma_threshold: float = _DRIFT_SIGMA,
+) -> dict[str, Any]:
+    """Wave 15: Z-Score drift detection on ``runtime_seconds``.
+
+    Compares the current run's runtime against the rolling mean and standard
+    deviation of the most recent *window* historical runs.  A run is flagged as
+    a "Performance Drift" event when its Z-score exceeds *sigma_threshold*.
+
+    Returns a result dict that is always safe to serialise to JSON.
+    """
+    runs = historical_ledger.get("runs", []) if isinstance(historical_ledger, dict) else []
+    runs = [r for r in runs if isinstance(r, dict)]
+
+    # Exclude the current run from the baseline window so we don't self-compare.
+    current_run_id = current_run.get("run_id")
+    baseline_runs = [r for r in runs if r.get("run_id") != current_run_id]
+    baseline_window = baseline_runs[-window:] if len(baseline_runs) > window else baseline_runs
+
+    current_runtime = float(current_run.get("runtime_seconds", 0.0) or 0.0)
+
+    insufficient_data = len(baseline_window) < 2
+    if insufficient_data:
+        return {
+            "drift_detected": False,
+            "z_score": 0.0,
+            "mean_runtime_s": 0.0,
+            "std_runtime_s": 0.0,
+            "current_runtime_s": round(current_runtime, 6),
+            "delta_pct": 0.0,
+            "window_size": len(baseline_window),
+            "sigma_threshold": sigma_threshold,
+            "insufficient_data": True,
+            "details": f"Insufficient baseline data ({len(baseline_window)} runs; need ≥2).",
+        }
+
+    baseline_runtimes = np.array(
+        [float(r.get("runtime_seconds", 0.0) or 0.0) for r in baseline_window], dtype=float
+    )
+    mean_rt = float(np.mean(baseline_runtimes))
+    std_rt = float(np.std(baseline_runtimes, ddof=1))  # sample std
+
+    if std_rt <= 0.0:
+        z_score = 0.0
+    else:
+        z_score = (current_runtime - mean_rt) / std_rt
+
+    drift_detected = abs(z_score) > sigma_threshold
+    delta_pct = ((current_runtime - mean_rt) / mean_rt * 100.0) if mean_rt != 0.0 else 0.0
+
+    details = (
+        f"Performance Drift Detected: {delta_pct:+.1f}% runtime change vs. mean "
+        f"({current_runtime:.3f}s vs. μ={mean_rt:.3f}s, σ={std_rt:.3f}s, Z={z_score:.2f})"
+        if drift_detected
+        else f"No drift detected (Z={z_score:.2f}, threshold=±{sigma_threshold}σ)."
+    )
+
+    return {
+        "drift_detected": drift_detected,
+        "z_score": round(z_score, 6),
+        "mean_runtime_s": round(mean_rt, 6),
+        "std_runtime_s": round(std_rt, 6),
+        "current_runtime_s": round(current_runtime, 6),
+        "delta_pct": round(delta_pct, 4),
+        "window_size": len(baseline_window),
+        "sigma_threshold": sigma_threshold,
+        "insufficient_data": False,
+        "details": details,
+    }
+
+
+def analyze_matrix_regression(doe_matrix: dict[str, Any]) -> dict[str, Any]:
+    """Wave 15: T-test regression analysis across CI matrix factor levels.
+
+    Groups ``pca_ready_rows`` by ``python_version`` (Factor A) and performs
+    pairwise Welch's T-tests (unequal variance) on ``runtime_seconds``.  Any
+    pair whose p-value falls below *_TTEST_ALPHA* is flagged as a statistically
+    significant regression.
+
+    Returns a result dict that is always safe to serialise to JSON.
+    """
+    rows = doe_matrix.get("pca_ready_rows", []) if isinstance(doe_matrix, dict) else []
+    rows = [r for r in rows if isinstance(r, dict)]
+
+    # Group runtimes by python_version factor level.
+    groups: dict[str, list[float]] = {}
+    for row in rows:
+        label = str(row.get("python_version", "unknown"))
+        groups.setdefault(label, []).append(float(row.get("runtime_seconds", 0.0) or 0.0))
+
+    factor_levels = sorted(groups.keys())
+    comparisons: list[dict[str, Any]] = []
+    regression_detected = False
+
+    for i in range(len(factor_levels)):
+        for j in range(i + 1, len(factor_levels)):
+            level_a = factor_levels[i]
+            level_b = factor_levels[j]
+            samples_a = groups[level_a]
+            samples_b = groups[level_b]
+
+            if len(samples_a) < 2 or len(samples_b) < 2:
+                comparisons.append(
+                    {
+                        "factor": "python_version",
+                        "group_a": level_a,
+                        "group_b": level_b,
+                        "n_a": len(samples_a),
+                        "n_b": len(samples_b),
+                        "t_statistic": None,
+                        "p_value": None,
+                        "significant": False,
+                        "note": "Insufficient samples for T-test (need ≥2 per group).",
+                    }
+                )
+                continue
+
+            if _SCIPY_AVAILABLE and _scipy_stats is not None:
+                t_stat, p_val = _scipy_stats.ttest_ind(samples_a, samples_b, equal_var=False)
+            else:
+                # Welch's T-test manual fallback (no scipy).
+                arr_a = np.array(samples_a, dtype=float)
+                arr_b = np.array(samples_b, dtype=float)
+                mean_a, mean_b = float(np.mean(arr_a)), float(np.mean(arr_b))
+                var_a = float(np.var(arr_a, ddof=1))
+                var_b = float(np.var(arr_b, ddof=1))
+                se = (var_a / len(arr_a) + var_b / len(arr_b)) ** 0.5
+                t_stat = (mean_a - mean_b) / se if se > 0 else 0.0
+                # Approximate p-value via normal CDF (conservative for small n).
+                p_val = float(2.0 * (1.0 - float(np.exp(-0.5 * t_stat**2) / (2.0 * np.pi) ** 0.5)))
+                p_val = min(max(p_val, 0.0), 1.0)
+
+            t_stat_f = float(t_stat)
+            p_val_f = float(p_val)
+            significant = p_val_f < _TTEST_ALPHA
+            if significant:
+                regression_detected = True
+
+            comparisons.append(
+                {
+                    "factor": "python_version",
+                    "group_a": level_a,
+                    "group_b": level_b,
+                    "n_a": len(samples_a),
+                    "n_b": len(samples_b),
+                    "t_statistic": round(t_stat_f, 6),
+                    "p_value": round(p_val_f, 6),
+                    "significant": significant,
+                    "alpha": _TTEST_ALPHA,
+                    "note": (
+                        f"Significant regression between {level_a} and {level_b} "
+                        f"(p={p_val_f:.4f} < α={_TTEST_ALPHA})."
+                        if significant
+                        else f"No significant regression (p={p_val_f:.4f} ≥ α={_TTEST_ALPHA})."
+                    ),
+                }
+            )
+
+    summary = (
+        f"Regression detected in {sum(1 for c in comparisons if c.get('significant'))} "
+        f"of {len(comparisons)} factor-level comparison(s)."
+        if comparisons
+        else "No factor-level comparisons available (need ≥2 distinct python_version levels with ≥2 samples each)."
+    )
+
+    return {
+        "regression_detected": regression_detected,
+        "factor_levels_analyzed": factor_levels,
+        "comparisons": comparisons,
+        "scipy_available": _SCIPY_AVAILABLE,
+        "summary": summary,
+    }
+
+
+def build_drift_alerts_payload(
+    drift_result: dict[str, Any],
+    regression_result: dict[str, Any],
+) -> dict[str, Any]:
+    """Assemble the consolidated Wave 15 alert payload for the dashboard and Jekyll."""
+    any_alert = drift_result.get("drift_detected", False) or regression_result.get("regression_detected", False)
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "wave": "15",
+        "any_alert": any_alert,
+        "drift": drift_result,
+        "regression": regression_result,
     }
 
 
@@ -450,6 +657,12 @@ def main() -> None:
     pca_proof["variable_names"] = variable_names
     doe_matrix["pca_variable_names"] = variable_names
 
+    # ── Wave 15: Drift detection & regression analysis ───────────────────
+    drift_result = detect_drift(current_run, updated_ledger)
+    regression_result = analyze_matrix_regression(doe_matrix)
+    drift_alerts_payload = build_drift_alerts_payload(drift_result, regression_result)
+    updated_ledger["meta"]["drift_alerts"] = drift_alerts_payload
+
     LEDGER_PATH.write_text(json.dumps(updated_ledger, indent=2), encoding="utf-8")
     DOE_MATRIX_PATH.write_text(json.dumps(doe_matrix, indent=2), encoding="utf-8")
 
@@ -460,6 +673,10 @@ def main() -> None:
     VISUALS_DIR.mkdir(parents=True, exist_ok=True)
     plotly_payloads = generate_plotly_json(updated_ledger, pca_proof)
     PLOTLY_PAYLOAD_PATH.write_text(json.dumps(plotly_payloads, indent=2), encoding="utf-8")
+
+    # Write Jekyll-ingestible _data file for the drift alert banner.
+    DRIFT_ALERTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    DRIFT_ALERTS_PATH.write_text(json.dumps(drift_alerts_payload, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":

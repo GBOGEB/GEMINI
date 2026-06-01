@@ -22,6 +22,20 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     _run_sanity_checks = None
 
+try:
+    from src.stats_engine import (  # type: ignore
+        analyze_matrix_regression as _analyze_matrix_regression,
+        build_drift_alerts_payload as _build_drift_alerts_payload,
+        detect_drift as _detect_drift,
+    )
+
+    _STATS_ENGINE_AVAILABLE = True
+except ImportError:  # pragma: no cover - optional dependency
+    _analyze_matrix_regression = None  # type: ignore[assignment]
+    _build_drift_alerts_payload = None  # type: ignore[assignment]
+    _detect_drift = None  # type: ignore[assignment]
+    _STATS_ENGINE_AVAILABLE = False
+
 
 CONFIG_PATH = "config/blsn_config.yaml"
 OUTPUT_DIR = Path("docs")
@@ -276,6 +290,7 @@ def generate_html_report(
     historical_ledger: dict | None = None,
     doe_matrix: dict | None = None,
     bt_ranking: dict | None = None,
+    drift_alerts: dict | None = None,
 ) -> str:
     presentation = presentation_layer or {
         "enable_lipstick": False,
@@ -479,6 +494,55 @@ def generate_html_report(
             '<tr><td colspan="3" style="color:var(--text-3)">No QPLANT requirement ranking data.</td></tr>'
         )
 
+    # ── Wave 15: Drift & Regression Alert Banner ─────────────────────────────
+    alerts = drift_alerts if isinstance(drift_alerts, dict) else {}
+    drift_info = alerts.get("drift", {})
+    drift_info = drift_info if isinstance(drift_info, dict) else {}
+    regression_info = alerts.get("regression", {})
+    regression_info = regression_info if isinstance(regression_info, dict) else {}
+    any_alert = bool(alerts.get("any_alert", False))
+    drift_detected = bool(drift_info.get("drift_detected", False))
+    regression_detected = bool(regression_info.get("regression_detected", False))
+
+    if any_alert:
+        alert_items: list[str] = []
+        if drift_detected:
+            delta_pct = float(drift_info.get("delta_pct", 0.0) or 0.0)
+            z_score = float(drift_info.get("z_score", 0.0) or 0.0)
+            alert_items.append(
+                f"⚠ Performance Drift Detected: {delta_pct:+.1f}% runtime vs. mean"
+                f" (Z={z_score:.2f}, threshold=±{drift_info.get('sigma_threshold', 3.0)}σ)"
+            )
+        if regression_detected:
+            sig_count = sum(1 for c in regression_info.get("comparisons", []) if c.get("significant"))
+            alert_items.append(
+                f"⚠ Regression Detected: {sig_count} significant factor-level comparison(s) — "
+                + escape(str(regression_info.get("summary", "")))
+            )
+        alert_list_html = "".join(f"<li>{escape(item)}</li>" for item in alert_items)
+        drift_banner_html = f"""
+    <!-- ── Wave 15: Regression & Drift Alert Banner (visible to ALL audiences) -->
+    <div role="alert" style="
+        margin:1rem 0;padding:1rem 1.25rem;
+        background:var(--fail-bg);color:var(--fail-text);
+        border:1.5px solid var(--fail-text);border-radius:0.75rem;
+        font-size:0.875rem;line-height:1.6;">
+      <strong style="font-size:1rem">🚨 Wave 15 — Regression &amp; Drift Alerts</strong>
+      <ul style="margin:0.5rem 0 0;padding-left:1.25rem">{alert_list_html}</ul>
+    </div>"""
+    else:
+        drift_details = escape(str(drift_info.get("details", "Drift detection active.")))
+        drift_banner_html = f"""
+    <!-- ── Wave 15: Regression & Drift Alert Banner (visible to ALL audiences) -->
+    <div role="status" style="
+        margin:1rem 0;padding:0.75rem 1.25rem;
+        background:var(--pass-bg);color:var(--pass-text);
+        border:1.5px solid var(--pass-text);border-radius:0.75rem;
+        font-size:0.875rem;line-height:1.6;">
+      <strong>✅ Wave 15 — No Drift or Regression Detected</strong>
+      <span style="margin-left:0.75rem;font-size:0.8rem;opacity:0.8">{drift_details}</span>
+    </div>"""
+
     # ── Assemble and return the full HTML report ─────────────────────────────
     # The report uses CSS custom-property (token) colour system so every
     # element adapts to light / dark themes without JavaScript rewrites.
@@ -661,6 +725,7 @@ def generate_html_report(
   </nav>
 
   <main>
+    {drift_banner_html}
 
     <!-- ── Header / Overview  (visible to ALL audiences) ──────────────── -->
     <header class="card">
@@ -1092,6 +1157,27 @@ def main() -> None:
     doe_matrix = _load_json_data(OUTPUT_DIR / "experimental_design_matrix.json")
     bt_ranking = _load_json_data(OUTPUT_DIR / "bt_ranking.json")
 
+    # ── Wave 15: Compute drift & regression alerts ───────────────────────────
+    drift_alerts: dict | None = None
+    if _STATS_ENGINE_AVAILABLE and _detect_drift and _analyze_matrix_regression and _build_drift_alerts_payload:
+        ledger_meta = historical_ledger.get("meta", {}) if isinstance(historical_ledger, dict) else {}
+        # If the stats_engine has already written drift_alerts into the ledger
+        # meta (via its own main()), reuse it; otherwise compute fresh.
+        drift_alerts = ledger_meta.get("drift_alerts") if isinstance(ledger_meta.get("drift_alerts"), dict) else None
+        if drift_alerts is None:
+            ledger_runs = historical_ledger if isinstance(historical_ledger, dict) else {}
+            current_run = ledger_meta.get("current_run", {}) or {}
+            drift_result = _detect_drift(current_run, ledger_runs)
+            regression_result = _analyze_matrix_regression(doe_matrix if isinstance(doe_matrix, dict) else {})
+            drift_alerts = _build_drift_alerts_payload(drift_result, regression_result)
+
+        # Persist the Jekyll-ingestible _data file from the pipeline as well.
+        data_dir = OUTPUT_DIR / "_data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        (data_dir / "drift_alerts.json").write_text(
+            json.dumps(drift_alerts, indent=2), encoding="utf-8"
+        )
+
     report_html = generate_html_report(
         params,
         sanity_results,
@@ -1103,6 +1189,7 @@ def main() -> None:
         historical_ledger,
         doe_matrix,
         bt_ranking,
+        drift_alerts,
     )
     (OUTPUT_DIR / "index.html").write_text(report_html, encoding="utf-8")
 
