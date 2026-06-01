@@ -1,0 +1,53 @@
+system_meta:
+  presentation_layer:
+    enable_lipstick: true
+    css_framework_cdn: https://cdn.tailwindcss.com
+    theme: light
+simulation_parameters:
+  nominal_mass_flow_g_s: 110
+  max_limit_g_s: 140
+  min_limit_g_s: 80
+  vehicle_name: P3 Orion
+  cooling_mode: helium_closed_loop
+system_parameters:
+  nitrogen_precooling:
+    inlet_temp_k_max: 90
+    outlet_temp_k_min: 70
+    mass_flow_g_s_max: 500
+  turbine_stage_1:
+    efficiency_min_pct: 82
+    inlet_pressure_bar_min: 14
+    outlet_pressure_bar_max: 6
+  turbine_stage_2:
+    efficiency_min_pct: 78
+    inlet_pressure_bar_min: 6
+    outlet_pressure_bar_max: 1.5
+  helium_loop:
+    low_pressure_bar_min: 1.2
+    high_pressure_bar_max: 18
+    return_temp_k_max: 5.0
+  cold_box:
+    thermal_load_kw_max: 32
+    standby_thermal_load_kw_min: 4
+telemetry:
+  tuple_execution_targets:
+    ci_total_runtime_s:
+    - 120
+    - 180
+    - 240
+    pytest_runtime_s:
+    - 15
+    - 25
+    - 35
+    pipeline_runtime_s:
+    - 5
+    - 10
+    - 15
+    yaml_json_lint_runtime_s:
+    - 3
+    - 6
+    - 9
+publishing:
+  generate_pdf: true
+  generate_slides: true
+  base_url: ''

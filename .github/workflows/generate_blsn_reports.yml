@@ -104,6 +104,10 @@ jobs:
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
         run: python src/bt_ranking.py
 
+      - name: Build Jekyll Data Bridge
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python src/jekyll_bridge.py
+
       - name: Archive Engineering Outputs
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
@@ -132,18 +136,36 @@ jobs:
       - name: Install Publishing Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyyaml fpdf2
+          pip install pyyaml fpdf2 plotly numpy
 
       - name: Build docs/ publish assets
         run: python -m src.pipeline
 
+      - name: Build Statistical Engine
+        run: python src/stats_engine.py
+
       - name: Build Repository Indexes
         run: python src/indexer.py
+
+      - name: Build Bradley-Terry Ranking
+        run: python src/bt_ranking.py
+
+      - name: Build Jekyll Data Bridge
+        run: python src/jekyll_bridge.py
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build Jekyll site
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./docs
+          destination: ./_site
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/
+          path: ./_site
 
       - name: Deploy to GitHub Pages
         id: deployment
