@@ -579,6 +579,7 @@ def generate_html_report(
       transition: background 0.15s, border-color 0.15s;
     }}
     .ctrl-select:hover, .ctrl-btn:hover {{ background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }}
+    .ctrl-btn--active {{ background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }}
     /* ── Cards ──────────────────────────────────────────────────────────── */
     .card {{
       background: var(--bg-card);
@@ -729,7 +730,7 @@ def generate_html_report(
         <h2 class="card-title" style="margin:0">Analytics Dashboard</h2>
         <!-- Audience tab buttons -->
         <div style="display:flex;gap:0.5rem;">
-          <button id="btn-exec" class="ctrl-btn" style="background:var(--accent);color:#fff;border-color:var(--accent);" onclick="switchChartView('executive')">Executive View</button>
+          <button id="btn-exec" class="ctrl-btn ctrl-btn--active" onclick="switchChartView('executive')">Executive View</button>
           <button id="btn-eng"  class="ctrl-btn" onclick="switchChartView('engineering')">Engineering View</button>
         </div>
       </div>
@@ -910,16 +911,8 @@ def generate_html_report(
         const isExec = view === 'executive';
         viewExec.style.display = isExec ? 'block' : 'none';
         viewEng.style.display  = isExec ? 'none'  : 'block';
-        if (btnExec) {{
-          btnExec.style.background   = isExec ? 'var(--accent)' : '';
-          btnExec.style.color        = isExec ? '#fff' : '';
-          btnExec.style.borderColor  = isExec ? 'var(--accent)' : '';
-        }}
-        if (btnEng) {{
-          btnEng.style.background   = isExec ? '' : 'var(--accent)';
-          btnEng.style.color        = isExec ? '' : '#fff';
-          btnEng.style.borderColor  = isExec ? '' : 'var(--accent)';
-        }}
+        if (btnExec) btnExec.classList.toggle('ctrl-btn--active', isExec);
+        if (btnEng)  btnEng.classList.toggle('ctrl-btn--active', !isExec);
         /* Trigger resize so Plotly fills a div that was previously hidden. */
         window.dispatchEvent(new Event('resize'));
       }};
