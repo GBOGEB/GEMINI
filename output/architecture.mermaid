@@ -1,0 +1,6 @@
+graph TD
+    SSOT[(YAML Configuration)] -->|Parses| Engine[BLSN Python Engine]
+    Engine -->|Validates| REQ-001[REQ-001: Baseline]
+    Engine -->|Validates| REQ-002[REQ-002: Draft]
+    Engine -->|Validates| REQ-003[REQ-003: Active_Review]
+    Engine -->|Compiles| HTML[Interactive HTML Report]
