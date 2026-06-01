@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BLSN Report</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <main class="mx-auto max-w-5xl px-6 py-10">
+    <header class="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">BLSN</p>
+      <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-900">Synthetic Validation Report</h1>
+      <p class="mt-3 text-sm text-slate-600">Theme: <span class="font-semibold text-slate-800">light</span></p>
+      <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-xl bg-slate-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-500">Vehicle</p>
+          <p class="mt-1 text-lg font-semibold text-slate-900">P3 Orion</p>
+        </div>
+        <div class="rounded-xl bg-slate-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-500">Cooling Mode</p>
+          <p class="mt-1 text-lg font-semibold text-slate-900">helium_closed_loop</p>
+        </div>
+        <div class="rounded-xl bg-slate-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-500">Nominal Mass Flow</p>
+          <p class="mt-1 text-lg font-semibold text-slate-900">110 g/s</p>
+        </div>
+        <div class="rounded-xl bg-slate-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-500">Limits</p>
+          <p class="mt-1 text-lg font-semibold text-slate-900">80 - 140 g/s</p>
+        </div>
+      </div>
+    </header>
+
+    <section class="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 class="text-xl font-semibold text-slate-900">Sanity Check Telemetry</h2>
+      <table class="mt-4 w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <thead>
+          <tr class="bg-slate-100 text-left">
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Message</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="pass border-b border-slate-200 last:border-none"><td class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">PASS</td><td class="px-4 py-3 text-sm text-slate-700">[PASS] PASS | Nominal mass flow is bounded by configured limits</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 class="text-xl font-semibold text-slate-900">Tuple Execution Telemetry Targets (seconds)</h2>
+      <table class="mt-4 w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <thead>
+          <tr class="bg-slate-100 text-left">
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Metric</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Target</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Warn Threshold</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Fail Threshold</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-slate-200 last:border-none"><td class="px-4 py-3 font-medium text-slate-800">ci_total_runtime_s</td><td class="px-4 py-3 text-slate-700">120.0</td><td class="px-4 py-3 text-amber-700">180.0</td><td class="px-4 py-3 text-rose-700">240.0</td></tr>
+<tr class="border-b border-slate-200 last:border-none"><td class="px-4 py-3 font-medium text-slate-800">pytest_runtime_s</td><td class="px-4 py-3 text-slate-700">15.0</td><td class="px-4 py-3 text-amber-700">25.0</td><td class="px-4 py-3 text-rose-700">35.0</td></tr>
+<tr class="border-b border-slate-200 last:border-none"><td class="px-4 py-3 font-medium text-slate-800">pipeline_runtime_s</td><td class="px-4 py-3 text-slate-700">5.0</td><td class="px-4 py-3 text-amber-700">10.0</td><td class="px-4 py-3 text-rose-700">15.0</td></tr>
+<tr class="border-b border-slate-200 last:border-none"><td class="px-4 py-3 font-medium text-slate-800">yaml_json_lint_runtime_s</td><td class="px-4 py-3 text-slate-700">3.0</td><td class="px-4 py-3 text-amber-700">6.0</td><td class="px-4 py-3 text-rose-700">9.0</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 class="text-xl font-semibold text-slate-900">Metric Markdown Slugs</h2>
+      <ul class="mt-4 list-disc space-y-2 pl-5 text-sm"><li><a class="text-indigo-600 hover:text-indigo-500" href="ci-total-runtime-s.md">Ci Total Runtime S</a></li>
+<li><a class="text-indigo-600 hover:text-indigo-500" href="pytest-runtime-s.md">Pytest Runtime S</a></li>
+<li><a class="text-indigo-600 hover:text-indigo-500" href="pipeline-runtime-s.md">Pipeline Runtime S</a></li>
+<li><a class="text-indigo-600 hover:text-indigo-500" href="yaml-json-lint-runtime-s.md">Yaml Json Lint Runtime S</a></li></ul>
+      <div class="mt-6 grid gap-4"><article class="rounded-xl border border-slate-200 bg-white p-4"><h3 class="text-lg font-semibold text-slate-900">Ci Total Runtime S</h3><ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700"><li>Metric ID: `ci_total_runtime_s`</li><li>Target Threshold: **120.0s**</li><li>Warn Threshold: **180.0s**</li><li>Fail Threshold: **240.0s**</li></ul></article>
+<article class="rounded-xl border border-slate-200 bg-white p-4"><h3 class="text-lg font-semibold text-slate-900">Pytest Runtime S</h3><ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700"><li>Metric ID: `pytest_runtime_s`</li><li>Target Threshold: **15.0s**</li><li>Warn Threshold: **25.0s**</li><li>Fail Threshold: **35.0s**</li></ul></article>
+<article class="rounded-xl border border-slate-200 bg-white p-4"><h3 class="text-lg font-semibold text-slate-900">Pipeline Runtime S</h3><ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700"><li>Metric ID: `pipeline_runtime_s`</li><li>Target Threshold: **5.0s**</li><li>Warn Threshold: **10.0s**</li><li>Fail Threshold: **15.0s**</li></ul></article>
+<article class="rounded-xl border border-slate-200 bg-white p-4"><h3 class="text-lg font-semibold text-slate-900">Yaml Json Lint Runtime S</h3><ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700"><li>Metric ID: `yaml_json_lint_runtime_s`</li><li>Target Threshold: **3.0s**</li><li>Warn Threshold: **6.0s**</li><li>Fail Threshold: **9.0s**</li></ul></article></div>
+    </section>
+
+    <section class="rounded-2xl border border-indigo-200 bg-gradient-to-br from-white to-indigo-50 p-6 shadow-sm">
+      <div class="mb-4 flex items-center justify-between gap-4">
+        <h2 class="text-xl font-semibold text-slate-900">Mermaid System Flow</h2>
+        <span class="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">Diagram</span>
+      </div>
+      <div class="rounded-xl border border-indigo-100 bg-white p-4">
+        <div class="mermaid">
+          graph LR;
+            SSOT[SSOT Config] --> PIPELINE[Pipeline Execution];
+            PIPELINE --> MARKDOWN[Markdown Slug Pages];
+            PIPELINE --> INDEX[Index HTML];
+            PIPELINE --> SLIDES[Slides HTML];
+            INDEX --> PDF[PDF Export];
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

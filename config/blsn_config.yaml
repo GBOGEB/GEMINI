@@ -1,16 +1,14 @@
 system_meta:
   presentation_layer:
     enable_lipstick: true
-    css_framework_cdn: "https://cdn.tailwindcss.com"
-    theme: "light"
-
+    css_framework_cdn: https://cdn.tailwindcss.com
+    theme: light
 simulation_parameters:
   nominal_mass_flow_g_s: 110
   max_limit_g_s: 140
   min_limit_g_s: 80
-  vehicle_name: "P3 Orion"
-  cooling_mode: "helium_closed_loop"
-
+  vehicle_name: P3 Orion
+  cooling_mode: helium_closed_loop
 system_parameters:
   nitrogen_precooling:
     inlet_temp_k_max: 90
@@ -31,10 +29,25 @@ system_parameters:
   cold_box:
     thermal_load_kw_max: 32
     standby_thermal_load_kw_min: 4
-
 telemetry:
   tuple_execution_targets:
-    ci_total_runtime_s: [120, 180, 240]
-    pytest_runtime_s: [15, 25, 35]
-    pipeline_runtime_s: [5, 10, 15]
-    yaml_json_lint_runtime_s: [3, 6, 9]
+    ci_total_runtime_s:
+    - 120
+    - 180
+    - 240
+    pytest_runtime_s:
+    - 15
+    - 25
+    - 35
+    pipeline_runtime_s:
+    - 5
+    - 10
+    - 15
+    yaml_json_lint_runtime_s:
+    - 3
+    - 6
+    - 9
+publishing:
+  generate_pdf: true
+  generate_slides: true
+  base_url: ''

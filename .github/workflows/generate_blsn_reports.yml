@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 jobs:
   full-matrix-validation:
@@ -40,7 +42,7 @@ jobs:
       - name: Install Core & Test Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest ruff yamllint pyyaml matplotlib
+          pip install pytest ruff yamllint pyyaml matplotlib fpdf2
 
       - name: Data Substrate Linting (YAML & JSON)
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
@@ -68,11 +70,46 @@ jobs:
 
       - name: Execute Idempotent BLSN Engine
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
-        run: python src/pipeline.py
+        run: python -m src.pipeline
 
       - name: Archive Engineering Outputs
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: blsn-html-and-charts
-          path: output/
+          name: blsn-docs-and-charts
+          path: docs/
+
+  deploy-pages:
+    name: Deploy GitHub Pages
+    runs-on: ubuntu-latest
+    needs: full-matrix-validation
+    if: github.ref == 'refs/heads/main' && needs.full-matrix-validation.result == 'success'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout Repository Source
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install Publishing Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml fpdf2
+
+      - name: Build docs/ publish assets
+        run: python -m src.pipeline
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
