@@ -274,9 +274,6 @@ def _federation_entries(federation_snapshot: dict, pca_weights: dict[str, float]
 
 
 def _merge_requirement_rankings(base_rankings: dict, external_entries: list[RankEntry]) -> dict:
-    if not external_entries:
-        return base_rankings
-
     external_by_category: defaultdict[str, list[RankEntry]] = defaultdict(list)
     for entry in external_entries:
         external_by_category[entry.category].append(entry)
@@ -292,12 +289,8 @@ def _merge_requirement_rankings(base_rankings: dict, external_entries: list[Rank
     merged_entries = list(base_rankings.get("global_entries", [])) + external_entries
 
     return {
-        "global_entries": merged_entries,
-        "by_category_entries": merged_by_category,
         "global": _rank_entries(base_rankings.get("global_entries", [])),
-        "by_category": {
-            category: _rank_entries(items) for category, items in sorted(base_rankings.get("by_category_entries", {}).items())
-        },
+        "by_category": {category: _rank_entries(items) for category, items in sorted(merged_by_category.items())},
         "federation_external_global": _rank_entries(external_entries),
         "global_with_federation": _rank_entries(merged_entries),
     }

@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "total_attempts": 1,
+    "total_successful_runs": 1,
+    "success_rate": 1.0,
+    "updated_at": "2026-06-01T01:26:18.470749+00:00",
+    "latest_deltas": {
+      "runtime_delta_vs_moving_avg": 0.0,
+      "pass_rate_delta_vs_moving_avg": 0.0,
+      "fail_rate_delta_vs_moving_avg": 0.0,
+      "previous_runtime_moving_avg": 0.0,
+      "previous_pass_rate_moving_avg": 0.0,
+      "previous_fail_rate_moving_avg": 0.0
+    }
+  },
+  "runs": [
+    {
+      "run_id": "gh-26730293276-1-Linux|unknown-python|default-load",
+      "captured_at": "2026-06-01T01:26:18.470738+00:00",
+      "factors": {
+        "os_type": "Linux",
+        "python_version": "unknown-python",
+        "load_parameter": "default-load"
+      },
+      "runtime_seconds": 0.0,
+      "total_tests": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "pass_rate": 0.0,
+      "fail_rate": 0.0,
+      "skip_rate": 0.0,
+      "success": true
+    }
+  ]
+}

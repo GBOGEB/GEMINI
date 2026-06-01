@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-06-01T01:26:18.367247+00:00",
+  "sources": {
+    "codex": {
+      "repo": "GBOGEB/CODEX",
+      "downloaded_files": {}
+    },
+    "abacus": {
+      "repo": "GBOGEB/ABACUS",
+      "downloaded_files": {}
+    }
+  },
+  "abacus_top_slowest_tests": [],
+  "codex_top_governance_violations": []
+}

@@ -1,0 +1,81 @@
+{
+  "generated_at": "2026-06-01T01:26:18.470777+00:00",
+  "factor_map": {
+    "A": "python_version",
+    "B": "os_type",
+    "C": "load_parameter"
+  },
+  "strict_independence_note": "Factors A, B, and C are treated as independent CI matrix variables.",
+  "levels": {
+    "A": [
+      "unknown-python"
+    ],
+    "B": [
+      "Linux"
+    ],
+    "C": [
+      "default-load"
+    ]
+  },
+  "runs_with_replicates": [
+    {
+      "factors": {
+        "A": "unknown-python",
+        "B": "Linux",
+        "C": "default-load"
+      },
+      "response": {
+        "runtime_seconds": 0.0
+      },
+      "replicate": 1
+    }
+  ],
+  "anova_ready_groups": [
+    [
+      0.0
+    ]
+  ],
+  "pca_ready_rows": [
+    {
+      "python_version": "unknown-python",
+      "os_type": "Linux",
+      "load_parameter": "default-load",
+      "runtime_seconds": 0.0,
+      "pass_rate": 0.0,
+      "fail_rate": 0.0
+    }
+  ],
+  "latest_deltas": {
+    "runtime_delta_vs_moving_avg": 0.0,
+    "pass_rate_delta_vs_moving_avg": 0.0,
+    "fail_rate_delta_vs_moving_avg": 0.0,
+    "previous_runtime_moving_avg": 0.0,
+    "previous_pass_rate_moving_avg": 0.0,
+    "previous_fail_rate_moving_avg": 0.0
+  },
+  "current_run": {
+    "run_id": "gh-26730293276-1-Linux|unknown-python|default-load",
+    "captured_at": "2026-06-01T01:26:18.470738+00:00",
+    "factors": {
+      "os_type": "Linux",
+      "python_version": "unknown-python",
+      "load_parameter": "default-load"
+    },
+    "runtime_seconds": 0.0,
+    "total_tests": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "pass_rate": 0.0,
+    "fail_rate": 0.0,
+    "skip_rate": 0.0,
+    "success": true
+  },
+  "pca_variable_names": [
+    "runtime_seconds",
+    "pass_rate",
+    "fail_rate",
+    "skip_rate",
+    "total_tests"
+  ]
+}
