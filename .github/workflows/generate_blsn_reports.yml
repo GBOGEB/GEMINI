@@ -42,7 +42,7 @@ jobs:
       - name: Install Core & Test Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest ruff yamllint pyyaml matplotlib fpdf2
+          pip install pytest pytest-json-report ruff yamllint pyyaml matplotlib fpdf2
 
       - name: Data Substrate Linting (YAML & JSON)
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
@@ -66,7 +66,21 @@ jobs:
       - name: Logic Validation & Speed Telemetry (Pytest)
         id: runtime_test
         continue-on-error: ${{ matrix.python-version != '3.9' || matrix.os != 'ubuntu-latest' }}
-        run: pytest -v --showlocals --durations=0
+        run: |
+          mkdir -p docs
+          pytest -v --json-report --json-report-file=docs/pytest_telemetry.json --durations=0
+
+      - name: Parse DMAIC KPI Dashboard
+        if: always() && matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python src/telemetry_parser.py
+
+      - name: Archive Pytest Telemetry Payload
+        if: always() && matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-telemetry-json
+          path: docs/pytest_telemetry.json
+          if-no-files-found: warn
 
       - name: Execute Idempotent BLSN Engine
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'

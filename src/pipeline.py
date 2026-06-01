@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from contextlib import redirect_stdout
 from html import escape
@@ -160,6 +161,19 @@ def _extract_publishing(ssot: dict) -> dict[str, str | bool]:
     }
 
 
+def _load_kpi_dashboard(path: Path | None = None) -> dict:
+    dashboard_path = path or (OUTPUT_DIR / "kpi_dashboard.json")
+    if not dashboard_path.exists():
+        return {}
+
+    try:
+        data = json.loads(dashboard_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+    return data if isinstance(data, dict) else {}
+
+
 def slugify(value: str) -> str:
     normalized = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower())
     normalized = re.sub(r"-{2,}", "-", normalized).strip("-")
@@ -218,6 +232,7 @@ def generate_html_report(
     presentation_layer: dict[str, str | bool] | None = None,
     publishing: dict[str, str | bool] | None = None,
     metric_pages: list[tuple[str, str, str]] | None = None,
+    kpi_dashboard: dict | None = None,
 ) -> str:
     presentation = presentation_layer or {"enable_lipstick": False, "css_framework_cdn": "", "theme": "light"}
     publishing_cfg = publishing or {"base_url": "", "generate_pdf": False, "generate_slides": False}
@@ -261,6 +276,23 @@ def generate_html_report(
     ) or '<li class="text-slate-500">No metric pages generated.</li>'
 
     previews = "\n".join(_render_markdown_preview(markdown) for _, _, markdown in metric_pages or [])
+    kpi = kpi_dashboard if isinstance(kpi_dashboard, dict) else {}
+    coverage_gap = kpi.get("coverage_gap", {})
+    coverage_gap = coverage_gap if isinstance(coverage_gap, dict) else {}
+    execution_velocity = kpi.get("execution_velocity", {})
+    execution_velocity = execution_velocity if isinstance(execution_velocity, dict) else {}
+    strictness = kpi.get("validation_strictness", {})
+    strictness = strictness if isinstance(strictness, dict) else {}
+    ratios = strictness.get("ratios", {})
+    ratios = ratios if isinstance(ratios, dict) else {}
+
+    claimed_limits = int(coverage_gap.get("claimed_monitored_metrics", 0) or 0)
+    tested_limits = int(coverage_gap.get("actual_validated_parameter_tests", 0) or 0)
+    verification_status = escape(str(coverage_gap.get("status", "UNKNOWN")))
+    total_runtime = float(execution_velocity.get("total_runtime_seconds", 0.0) or 0.0)
+    pass_ratio = float(ratios.get("pass_ratio", 0.0) or 0.0)
+    fail_ratio = float(ratios.get("fail_ratio", 0.0) or 0.0)
+    skip_ratio = float(ratios.get("skip_ratio", 0.0) or 0.0)
 
     return f"""
 <!DOCTYPE html>
@@ -333,6 +365,21 @@ def generate_html_report(
       <h2 class=\"text-xl font-semibold text-slate-900\">Metric Markdown Slugs</h2>
       <ul class=\"mt-4 list-disc space-y-2 pl-5 text-sm\">{metric_links}</ul>
       <div class=\"mt-6 grid gap-4\">{previews}</div>
+    </section>
+
+    <section class=\"mb-8 rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm\">
+      <h2 class=\"text-xl font-semibold text-slate-900\">System Verification: Claimed vs. Actual</h2>
+      <p class=\"mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900\">Claimed Limits: {claimed_limits} | Actually Tested Limits: {tested_limits} -&gt; STATUS: <strong>{verification_status}</strong></p>
+      <div class=\"mt-4 grid gap-4 md:grid-cols-2\">
+        <div class=\"rounded-xl border border-slate-200 bg-slate-50 p-4\">
+          <p class=\"text-xs uppercase tracking-wide text-slate-500\">Execution Velocity</p>
+          <p class=\"mt-1 text-sm text-slate-800\">Total Runtime (engine + tests): <strong>{total_runtime:.4f}s</strong></p>
+        </div>
+        <div class=\"rounded-xl border border-slate-200 bg-slate-50 p-4\">
+          <p class=\"text-xs uppercase tracking-wide text-slate-500\">Validation Strictness</p>
+          <p class=\"mt-1 text-sm text-slate-800\">Pass: <strong>{pass_ratio:.2%}</strong> | Fail: <strong>{fail_ratio:.2%}</strong> | Skip: <strong>{skip_ratio:.2%}</strong></p>
+        </div>
+      </div>
     </section>
 
     <section class=\"rounded-2xl border border-indigo-200 bg-gradient-to-br from-white to-indigo-50 p-6 shadow-sm\">
@@ -457,6 +504,7 @@ def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     metric_pages = _write_metric_markdown_files(telemetry_tuples, OUTPUT_DIR)
+    kpi_dashboard = _load_kpi_dashboard()
 
     report_html = generate_html_report(
         params,
@@ -465,6 +513,7 @@ def main() -> None:
         presentation_layer,
         publishing,
         metric_pages,
+        kpi_dashboard,
     )
     (OUTPUT_DIR / "index.html").write_text(report_html, encoding="utf-8")
 
