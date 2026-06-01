@@ -79,6 +79,93 @@
 <article class="rounded-xl border border-slate-200 bg-white p-4"><h3 class="text-lg font-semibold text-slate-900">Yaml Json Lint Runtime S</h3><ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700"><li>Metric ID: `yaml_json_lint_runtime_s`</li><li>Target Threshold: **3.0s**</li><li>Warn Threshold: **6.0s**</li><li>Fail Threshold: **9.0s**</li></ul></article></div>
     </section>
 
+    <section class="mb-8 rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm">
+      <h2 class="text-xl font-semibold text-slate-900">System Verification: Claimed vs. Actual</h2>
+      <p class="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900">Claimed Limits: 0 | Actually Tested Limits: 0 -&gt; STATUS: <strong>UNKNOWN</strong></p>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-500">Execution Velocity</p>
+          <p class="mt-1 text-sm text-slate-800">Total Runtime (engine + tests): <strong>0.0000s</strong></p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-500">Validation Strictness</p>
+          <p class="mt-1 text-sm text-slate-800">Pass: <strong>0.00%</strong> | Fail: <strong>0.00%</strong> | Skip: <strong>0.00%</strong></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-8 rounded-2xl border border-violet-200 bg-white p-6 shadow-sm">
+      <h2 class="text-xl font-semibold text-slate-900">Wave 12: SPC &amp; Telemetry Stats</h2>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-500">Runtime Drift</p>
+          <p class="mt-1 text-sm text-slate-800">Current Runtime: <strong>0.0000s</strong></p>
+          <p class="text-sm text-slate-700">Previous Moving Average: <strong>0.0000s</strong></p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-500">Historical Control</p>
+          <p class="mt-1 text-sm text-slate-800">Total Accumulated Runs: <strong>1</strong></p>
+          <p class="text-sm text-slate-700">Success Rate: <strong>100.00%</strong></p>
+        </div>
+      </div>
+      <p class="mt-4 text-sm text-slate-700">DoE Factors - A: <strong>python_version</strong>, B: <strong>os_type</strong>, C: <strong>load_parameter</strong></p>
+      <table class="mt-4 w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <thead>
+          <tr class="bg-slate-100 text-left">
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Principal Component</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Eigenvalue</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Explained Variance</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Highest Weight Variable</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-slate-200 last:border-none"><td class="px-4 py-3 text-sm text-slate-800">PC1</td><td class="px-4 py-3 text-sm text-slate-700">0.000000</td><td class="px-4 py-3 text-sm text-slate-700">0.00%</td><td class="px-4 py-3 text-sm text-slate-700">total_tests</td></tr>
+<tr class="border-b border-slate-200 last:border-none"><td class="px-4 py-3 text-sm text-slate-800">PC2</td><td class="px-4 py-3 text-sm text-slate-700">0.000000</td><td class="px-4 py-3 text-sm text-slate-700">0.00%</td><td class="px-4 py-3 text-sm text-slate-700">skip_rate</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="mb-8 rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
+      <h2 class="text-xl font-semibold text-slate-900">System Priority &amp; Bottleneck Ranking (Bradley-Terry)</h2>
+      <p class="mt-3 text-sm text-slate-700">Pairwise probability model: <code>P(i &gt; j) = p_i / (p_i + p_j)</code></p>
+      <h3 class="mt-5 text-lg font-semibold text-slate-900">Global Repo Ranking</h3>
+      <table class="mt-3 w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <thead>
+          <tr class="bg-slate-100 text-left">
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Rank</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Artifact</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">BT Strength</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Win Prob vs Top</th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="4" class="px-4 py-3 text-sm text-slate-500">No global BT ranking data.</td></tr></tbody>
+      </table>
+
+      <h3 class="mt-6 text-lg font-semibold text-slate-900">Inter-Category Ranking</h3>
+      <table class="mt-3 w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <thead>
+          <tr class="bg-slate-100 text-left">
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Rank</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Category</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Win Prob vs Top</th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="3" class="px-4 py-3 text-sm text-slate-500">No inter-category BT ranking data.</td></tr></tbody>
+      </table>
+
+      <h3 class="mt-6 text-lg font-semibold text-slate-900">QPLANT Requirements Ranking Bridge</h3>
+      <table class="mt-3 w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <thead>
+          <tr class="bg-slate-100 text-left">
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Rank</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Requirement</th>
+            <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Win Prob vs Top</th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="3" class="px-4 py-3 text-sm text-slate-500">No QPLANT requirement ranking data.</td></tr></tbody>
+      </table>
+    </section>
+
     <section class="rounded-2xl border border-indigo-200 bg-gradient-to-br from-white to-indigo-50 p-6 shadow-sm">
       <div class="mb-4 flex items-center justify-between gap-4">
         <h2 class="text-xl font-semibold text-slate-900">Mermaid System Flow</h2>
