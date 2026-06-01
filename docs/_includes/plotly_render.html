@@ -1,0 +1,12 @@
+{% assign chart = site.data.plotly_payloads.charts[include.chart_id] %}
+<div id="plotly-{{ include.chart_id }}" style="width:100%;min-height:420px;"></div>
+<script>
+  (function () {
+    var chart = {{ chart | jsonify }};
+    var element = document.getElementById('plotly-{{ include.chart_id }}');
+    if (!element || !chart) {
+      return;
+    }
+    Plotly.newPlot(element, chart.data || [], chart.layout || {});
+  })();
+</script>

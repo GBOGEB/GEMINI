@@ -1,0 +1,25 @@
+{% assign limits = site.data.blsn_config.telemetry.tuple_execution_targets[include.metric_id] %}
+{% assign reqs = site.data.bt_ranking.qplant_requirements_ranking.global %}
+{% assign requirement = nil %}
+{% for item in reqs %}
+  {% if item.name == include.metric_id %}
+    {% assign requirement = item %}
+    {% break %}
+  {% endif %}
+{% endfor %}
+
+<section class="metric-card">
+  <h2>{{ include.metric_id }}</h2>
+  {% if requirement %}
+    <p>QPLANT rank: {{ requirement.rank }} (strength: {{ requirement.strength }})</p>
+  {% endif %}
+  {% if limits and limits.size == 3 %}
+    <ul>
+      <li>Target threshold: {{ limits[0] }}</li>
+      <li>Warn threshold: {{ limits[1] }}</li>
+      <li>Fail threshold: {{ limits[2] }}</li>
+    </ul>
+  {% else %}
+    <p>No tuple limits available for this metric.</p>
+  {% endif %}
+</section>
