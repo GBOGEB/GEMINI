@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -107,7 +108,8 @@ def main() -> None:
     try:
         records = _collect_records()
         _write_outputs(records)
-    except (OSError, ValueError, TypeError, json.JSONDecodeError, yaml.YAMLError):
+    except (OSError, ValueError, TypeError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        print(f"Indexer fallback activated: {exc}", file=sys.stderr)
         DOCS_DIR.mkdir(parents=True, exist_ok=True)
         (DOCS_DIR / "index.json").write_text("[]\n", encoding="utf-8")
         (DOCS_DIR / "index.yaml").write_text(

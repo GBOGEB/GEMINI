@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -164,7 +165,8 @@ def main() -> None:
 
     try:
         dashboard = build_kpi_dashboard()
-    except (OSError, ValueError, TypeError, json.JSONDecodeError, yaml.YAMLError):
+    except (OSError, ValueError, TypeError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        print(f"Telemetry parser fallback activated: {exc}", file=sys.stderr)
         dashboard = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "execution_velocity": {
