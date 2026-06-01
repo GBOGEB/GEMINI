@@ -1,14 +1,122 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
     <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <style>
+      /* ── Design Tokens: Light ───────────────────────────────────────── */
+      :root, [data-theme="light"] {
+        --bg-page:   #f8fafc;
+        --bg-card:   #ffffff;
+        --bg-muted:  #f1f5f9;
+        --bg-header: #f8fafc;
+        --border:    #e2e8f0;
+        --text-1:    #0f172a;
+        --text-2:    #475569;
+        --text-3:    #94a3b8;
+        --accent:    #6366f1;
+        --accent-bg: #eef2ff;
+        --shadow:    0 1px 3px 0 rgb(0 0 0 / 0.07);
+      }
+      /* ── Design Tokens: Dark ─────────────────────────────────────────── */
+      [data-theme="dark"] {
+        --bg-page:   #0f172a;
+        --bg-card:   #1e293b;
+        --bg-muted:  #1e293b;
+        --bg-header: #1e293b;
+        --border:    #334155;
+        --text-1:    #f1f5f9;
+        --text-2:    #94a3b8;
+        --text-3:    #64748b;
+        --accent:    #818cf8;
+        --accent-bg: #1e1b4b;
+        --shadow:    0 1px 3px 0 rgb(0 0 0 / 0.3);
+      }
+      /* ── Base ────────────────────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        background: var(--bg-page);
+        color: var(--text-1);
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        margin: 0; padding: 0;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+      /* ── Site nav / theme toggle ─────────────────────────────────────── */
+      .site-nav {
+        position: sticky; top: 0; z-index: 20;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border);
+        padding: 0.5rem 1.5rem;
+        display: flex; align-items: center; gap: 0.75rem;
+        box-shadow: var(--shadow);
+      }
+      .site-brand {
+        font-size: 0.7rem; font-weight: 700;
+        letter-spacing: 0.15em; text-transform: uppercase;
+        color: var(--accent); margin-right: auto;
+      }
+      .theme-btn {
+        font-size: 0.78rem; padding: 0.2rem 0.6rem;
+        border: 1px solid var(--border); border-radius: 0.375rem;
+        background: var(--bg-muted); color: var(--text-1); cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .theme-btn:hover { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+      /* ── Content wrapper ─────────────────────────────────────────────── */
+      main { max-width: 56rem; margin: 0 auto; padding: 2rem 1.5rem; }
+    </style>
   </head>
   <body>
+    <!-- Sticky site navigation with theme toggle -->
+    <nav class="site-nav" aria-label="Site navigation">
+      <span class="site-brand">{{ site.title }}</span>
+      <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle colour theme">
+        ☀/🌙
+      </button>
+    </nav>
+
     <main>
       {{ content }}
     </main>
+
+    <script>
+      /* Simple light/dark toggle for Jekyll metric pages.
+         The choice is persisted to localStorage so it survives navigation. */
+      (function () {
+        'use strict';
+        const KEY  = 'blsn_theme';
+        const root = document.documentElement;
+
+        function resolveAuto() {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function applyTheme(raw) {
+          const resolved = raw === 'auto' ? resolveAuto() : raw;
+          root.setAttribute('data-theme', resolved);
+          localStorage.setItem(KEY, raw);
+        }
+
+        /* Initialise from localStorage; fall back to OS preference. */
+        applyTheme(localStorage.getItem(KEY) || 'auto');
+
+        window.toggleTheme = function () {
+          /* Cycle: light → dark → auto → light.
+             This preserves the "auto" (OS-preference) state so users can
+             always return to it without clearing localStorage manually. */
+          const raw = localStorage.getItem(KEY) || 'auto';
+          const next = raw === 'light' ? 'dark' : raw === 'dark' ? 'auto' : 'light';
+          applyTheme(next);
+        };
+
+        /* Keep "auto" in sync if the OS preference changes while the page
+           is open (e.g. automatic sunset-triggered dark mode). */
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+          if ((localStorage.getItem(KEY) || 'auto') === 'auto') applyTheme('auto');
+        });
+      })();
+    </script>
   </body>
 </html>

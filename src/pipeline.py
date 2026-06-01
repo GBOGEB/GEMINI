@@ -123,26 +123,46 @@ def _extract_tuple_telemetry(ssot: dict) -> list[tuple[str, tuple[float, float, 
 
 
 def _extract_presentation_layer(ssot: dict) -> dict[str, str | bool]:
+    """Extract all presentation-layer knobs from the SSOT config.
+
+    Returned keys:
+      enable_lipstick  – whether to inject the optional CSS CDN block
+      css_framework_cdn – CDN URL for the optional CSS framework (e.g. Tailwind)
+      theme            – "light" | "dark" | "auto"  (auto → follows OS preference)
+      density          – "compact" | "comfortable" | "spacious"
+      audience         – "executive" | "manager" | "engineer"
+    """
+    _defaults: dict[str, str | bool] = {
+        "enable_lipstick": False,
+        "css_framework_cdn": "",
+        "theme": "light",
+        "density": "comfortable",
+        "audience": "engineer",
+    }
+
     system_meta = ssot.get("system_meta", {})
     if not isinstance(system_meta, dict):
-        return {
-            "enable_lipstick": False,
-            "css_framework_cdn": "",
-            "theme": "light",
-        }
+        return _defaults
 
     presentation_layer = system_meta.get("presentation_layer", {})
     if not isinstance(presentation_layer, dict):
-        return {
-            "enable_lipstick": False,
-            "css_framework_cdn": "",
-            "theme": "light",
-        }
+        return _defaults
+
+    def _validated(key: str, allowed: set[str], default: str) -> str:
+        """Return the config value if it is in *allowed*, otherwise *default*."""
+        raw = str(presentation_layer.get(key, default)).strip().lower()
+        return raw if raw in allowed else default
+
+    theme   = _validated("theme",   {"light", "dark", "auto"},              "light")
+    density = _validated("density", {"compact", "comfortable", "spacious"}, "comfortable")
+    audience = _validated("audience", {"executive", "manager", "engineer"}, "engineer")
 
     return {
         "enable_lipstick": bool(presentation_layer.get("enable_lipstick", False)),
         "css_framework_cdn": str(presentation_layer.get("css_framework_cdn", "")).strip(),
-        "theme": str(presentation_layer.get("theme", "light")).strip().lower() or "light",
+        "theme": theme,
+        "density": density,
+        "audience": audience,
     }
 
 
@@ -216,6 +236,12 @@ def _render_metric_markdown(metric: str, thresholds: tuple[float, float, float])
 
 
 def _render_markdown_preview(markdown: str) -> str:
+    """Convert a minimal metric markdown snippet into a theme-aware HTML card.
+
+    Parses the first ``# Heading`` and ``- bullet`` lines, then wraps them in
+    a card that inherits the report's CSS custom-property colour tokens so it
+    adapts correctly to both light and dark modes.
+    """
     lines = [line for line in markdown.splitlines() if line.strip()]
     if not lines:
         return ""
@@ -231,9 +257,10 @@ def _render_markdown_preview(markdown: str) -> str:
     bullet_html = "".join(f"<li>{escape(item)}</li>" for item in bullets)
     title_html = escape(title) if title else "Metric"
     return (
-        '<article class="rounded-xl border border-slate-200 bg-white p-4">'
-        f"<h3 class=\"text-lg font-semibold text-slate-900\">{title_html}</h3>"
-        f"<ul class=\"mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700\">{bullet_html}</ul>"
+        '<article style="border-radius:0.75rem;border:1px solid var(--border);'
+        'background:var(--bg-card);padding:1rem;">'
+        f'<h3 style="margin:0 0 0.5rem;font-size:0.95rem;font-weight:600;color:var(--text-1)">{title_html}</h3>'
+        f'<ul style="margin:0;padding-left:1.25rem;font-size:0.875rem;color:var(--text-2);line-height:1.7">{bullet_html}</ul>'
         "</article>"
     )
 
@@ -250,48 +277,68 @@ def generate_html_report(
     doe_matrix: dict | None = None,
     bt_ranking: dict | None = None,
 ) -> str:
-    presentation = presentation_layer or {"enable_lipstick": False, "css_framework_cdn": "", "theme": "light"}
+    presentation = presentation_layer or {
+        "enable_lipstick": False,
+        "css_framework_cdn": "",
+        "theme": "light",
+        "density": "comfortable",
+        "audience": "engineer",
+    }
     publishing_cfg = publishing or {"base_url": "", "generate_pdf": False, "generate_slides": False}
 
     lipstick_enabled = bool(presentation.get("enable_lipstick", False))
     css_cdn = escape(str(presentation.get("css_framework_cdn", "")))
+    # theme / density / audience are written into HTML data-attributes and used
+    # by both the CSS token system and the JS controls bar.
     theme = escape(str(presentation.get("theme", "light")))
+    density = escape(str(presentation.get("density", "comfortable")))
+    audience = escape(str(presentation.get("audience", "engineer")))
     base_url = str(publishing_cfg.get("base_url", ""))
 
+    # Optional extra CSS framework CDN (e.g. Tailwind) injected when lipstick is on.
     cdn_block = f'<script src="{css_cdn}"></script>' if lipstick_enabled and css_cdn else ""
 
+    # ── Sanity-check table rows ──────────────────────────────────────────────
+    # Each row gets a status class ("pass" / "warn" / "fail") for CSS tinting.
     sanity_rows = "\n".join(
         (
-            f'<tr class="{_status_from_alert(alert)} border-b border-slate-200 last:border-none">'
-            f'<td class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">{_status_from_alert(alert).upper()}</td>'
-            f'<td class="px-4 py-3 text-sm text-slate-700">{escape(alert)}</td>'
+            f'<tr class="{_status_from_alert(alert)}">'
+            f'<td><span class="status-{_status_from_alert(alert)}">'
+            f"{_status_from_alert(alert).upper()}</span></td>"
+            f"<td>{escape(alert)}</td>"
             "</tr>"
         )
         for alert in sanity_results
     )
 
+    # ── Telemetry-target table rows ──────────────────────────────────────────
+    # Target / Warn / Fail columns use colour tokens so they adapt to dark mode.
     telemetry_rows = "\n".join(
         (
-            '<tr class="border-b border-slate-200 last:border-none">'
-            f'<td class="px-4 py-3 font-medium text-slate-800">{escape(metric)}</td>'
-            f'<td class="px-4 py-3 text-slate-700">{target:.1f}</td>'
-            f'<td class="px-4 py-3 text-amber-700">{warn:.1f}</td>'
-            f'<td class="px-4 py-3 text-rose-700">{fail:.1f}</td>'
+            "<tr>"
+            f'<td style="font-weight:500;color:var(--text-1)">{escape(metric)}</td>'
+            f'<td style="color:var(--pass-text)">{target:.1f}</td>'
+            f'<td style="color:var(--warn-text)">{warn:.1f}</td>'
+            f'<td style="color:var(--fail-text)">{fail:.1f}</td>'
             "</tr>"
         )
         for metric, (target, warn, fail) in telemetry_tuples
     )
     telemetry_rows = (
         telemetry_rows
-        or '<tr><td colspan="4" class="px-4 py-3 text-slate-500">No tuple telemetry configured.</td></tr>'
+        or '<tr><td colspan="4" style="color:var(--text-3)">No tuple telemetry configured.</td></tr>'
     )
 
+    # ── Metric slug links and inline previews ────────────────────────────────
     metric_links = "\n".join(
-        f'<li><a class="text-indigo-600 hover:text-indigo-500" href="{escape(_join_base(base_url, f"{slug}.md"))}">{escape(title)}</a></li>'
+        f'<li><a style="color:var(--accent)" href="{escape(_join_base(base_url, f"{slug}.md"))}">'
+        f"{escape(title)}</a></li>"
         for slug, title, _ in metric_pages or []
-    ) or '<li class="text-slate-500">No metric pages generated.</li>'
+    ) or '<li style="color:var(--text-3)">No metric pages generated.</li>'
 
     previews = "\n".join(_render_markdown_preview(markdown) for _, _, markdown in metric_pages or [])
+
+    # ── KPI Dashboard values ─────────────────────────────────────────────────
     kpi = kpi_dashboard if isinstance(kpi_dashboard, dict) else {}
     coverage_gap = kpi.get("coverage_gap", {})
     coverage_gap = coverage_gap if isinstance(coverage_gap, dict) else {}
@@ -309,6 +356,8 @@ def generate_html_report(
     pass_ratio = float(ratios.get("pass_ratio", 0.0) or 0.0)
     fail_ratio = float(ratios.get("fail_ratio", 0.0) or 0.0)
     skip_ratio = float(ratios.get("skip_ratio", 0.0) or 0.0)
+
+    # ── Historical ledger ────────────────────────────────────────────────────
     ledger = historical_ledger if isinstance(historical_ledger, dict) else {}
     ledger_meta = ledger.get("meta", {})
     ledger_meta = ledger_meta if isinstance(ledger_meta, dict) else {}
@@ -318,6 +367,7 @@ def generate_html_report(
     latest_deltas = latest_deltas if isinstance(latest_deltas, dict) else {}
     previous_runtime = float(latest_deltas.get("previous_runtime_moving_avg", 0.0) or 0.0)
 
+    # ── DoE factor map ───────────────────────────────────────────────────────
     doe = doe_matrix if isinstance(doe_matrix, dict) else {}
     factor_map = doe.get("factor_map", {})
     factor_map = factor_map if isinstance(factor_map, dict) else {}
@@ -325,6 +375,7 @@ def generate_html_report(
     factor_b = escape(str(factor_map.get("B", "os_type")))
     factor_c = escape(str(factor_map.get("C", "load_parameter")))
 
+    # ── PCA proof table rows ─────────────────────────────────────────────────
     pca_proof = kpi.get("pca_mathematical_proof", {})
     pca_proof = pca_proof if isinstance(pca_proof, dict) else {}
     pca_eigenvalues = pca_proof.get("eigenvalues", [])
@@ -344,7 +395,9 @@ def generate_html_report(
     top_components = min(2, len(pca_eigenvalues))
     for component_index in range(top_components):
         eigenvalue = float(pca_eigenvalues[component_index] or 0.0)
-        variance_ratio = float(pca_variance[component_index] or 0.0) if component_index < len(pca_variance) else 0.0
+        variance_ratio = (
+            float(pca_variance[component_index] or 0.0) if component_index < len(pca_variance) else 0.0
+        )
         weights = []
         for variable_index, variable_name in enumerate(pca_variables):
             if variable_index < len(pca_eigenmatrix):
@@ -353,18 +406,20 @@ def generate_html_report(
                     weights.append((variable_name, abs(float(row_values[component_index] or 0.0))))
         strongest_variable = max(weights, key=lambda item: item[1])[0] if weights else "N/A"
         pca_rows.append(
-            "<tr class=\"border-b border-slate-200 last:border-none\">"
-            f"<td class=\"px-4 py-3 text-sm text-slate-800\">PC{component_index + 1}</td>"
-            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{eigenvalue:.6f}</td>"
-            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{variance_ratio:.2%}</td>"
-            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{escape(str(strongest_variable))}</td>"
+            "<tr>"
+            f"<td>PC{component_index + 1}</td>"
+            f"<td>{eigenvalue:.6f}</td>"
+            f"<td>{variance_ratio:.2%}</td>"
+            f"<td>{escape(str(strongest_variable))}</td>"
             "</tr>"
         )
     pca_rows_html = (
         "\n".join(pca_rows)
         if pca_rows
-        else '<tr><td colspan="4" class="px-4 py-3 text-sm text-slate-500">No PCA proof data available.</td></tr>'
+        else '<tr><td colspan="4" style="color:var(--text-3)">No PCA proof data available.</td></tr>'
     )
+
+    # ── Bradley-Terry ranking table rows ────────────────────────────────────
     bt = bt_ranking if isinstance(bt_ranking, dict) else {}
     global_bt = bt.get("global_repo_ranking", [])
     global_bt = global_bt if isinstance(global_bt, list) else []
@@ -377,11 +432,11 @@ def generate_html_report(
 
     global_bt_rows = "\n".join(
         (
-            "<tr class=\"border-b border-slate-200 last:border-none\">"
-            f"<td class=\"px-4 py-3 text-sm text-slate-800\">{int(item.get('rank', 0) or 0)}</td>"
-            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{escape(str(item.get('name', 'N/A')))}</td>"
-            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{float(item.get('strength', 0.0) or 0.0):.6f}</td>"
-            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{float(item.get('win_probability_vs_top', 0.0) or 0.0):.2f}%</td>"
+            "<tr>"
+            f"<td>{int(item.get('rank', 0) or 0)}</td>"
+            f"<td>{escape(str(item.get('name', 'N/A')))}</td>"
+            f"<td>{float(item.get('strength', 0.0) or 0.0):.6f}</td>"
+            f"<td>{float(item.get('win_probability_vs_top', 0.0) or 0.0):.2f}%</td>"
             "</tr>"
         )
         for item in global_bt[:10]
@@ -389,15 +444,15 @@ def generate_html_report(
     )
     if not global_bt_rows:
         global_bt_rows = (
-            '<tr><td colspan="4" class="px-4 py-3 text-sm text-slate-500">No global BT ranking data.</td></tr>'
+            '<tr><td colspan="4" style="color:var(--text-3)">No global BT ranking data.</td></tr>'
         )
 
     inter_bt_rows = "\n".join(
         (
-            "<tr class=\"border-b border-slate-200 last:border-none\">"
-            f"<td class=\"px-4 py-3 text-sm text-slate-800\">{int(item.get('rank', 0) or 0)}</td>"
-            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{escape(str(item.get('name', 'N/A')))}</td>"
-            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{float(item.get('win_probability_vs_top', 0.0) or 0.0):.2f}%</td>"
+            "<tr>"
+            f"<td>{int(item.get('rank', 0) or 0)}</td>"
+            f"<td>{escape(str(item.get('name', 'N/A')))}</td>"
+            f"<td>{float(item.get('win_probability_vs_top', 0.0) or 0.0):.2f}%</td>"
             "</tr>"
         )
         for item in inter_bt
@@ -405,15 +460,15 @@ def generate_html_report(
     )
     if not inter_bt_rows:
         inter_bt_rows = (
-            '<tr><td colspan="3" class="px-4 py-3 text-sm text-slate-500">No inter-category BT ranking data.</td></tr>'
+            '<tr><td colspan="3" style="color:var(--text-3)">No inter-category BT ranking data.</td></tr>'
         )
 
     requirement_rows = "\n".join(
         (
-            "<tr class=\"border-b border-slate-200 last:border-none\">"
-            f"<td class=\"px-4 py-3 text-sm text-slate-800\">{int(item.get('rank', 0) or 0)}</td>"
-            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{escape(str(item.get('name', 'N/A')))}</td>"
-            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{float(item.get('win_probability_vs_top', 0.0) or 0.0):.2f}%</td>"
+            "<tr>"
+            f"<td>{int(item.get('rank', 0) or 0)}</td>"
+            f"<td>{escape(str(item.get('name', 'N/A')))}</td>"
+            f"<td>{float(item.get('win_probability_vs_top', 0.0) or 0.0):.2f}%</td>"
             "</tr>"
         )
         for item in requirement_global[:10]
@@ -421,182 +476,331 @@ def generate_html_report(
     )
     if not requirement_rows:
         requirement_rows = (
-            '<tr><td colspan="3" class="px-4 py-3 text-sm text-slate-500">No QPLANT requirement ranking data.</td></tr>'
+            '<tr><td colspan="3" style="color:var(--text-3)">No QPLANT requirement ranking data.</td></tr>'
         )
 
-    return f"""
-<!DOCTYPE html>
-<html lang=\"en\">
+    # ── Assemble and return the full HTML report ─────────────────────────────
+    # The report uses CSS custom-property (token) colour system so every
+    # element adapts to light / dark themes without JavaScript rewrites.
+    # Data attributes on <html> drive CSS selectors for theme, density and
+    # audience gating; the JS controls bar synchronises them at runtime and
+    # persists choices to localStorage.
+    return f"""<!DOCTYPE html>
+<html lang="en" data-theme="{theme}" data-density="{density}" data-audience="{audience}">
 <head>
-  <meta charset=\"utf-8\">
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
-  <title>BLSN Report</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BLSN Report — {escape(str(params.get('vehicle_name', 'N/A')))}</title>
   {cdn_block}
-  <script src=\"https://cdn.plot.ly/plotly-2.32.0.min.js\"></script>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <style>
+    /* ── Design Tokens: Light (default) ────────────────────────────────── */
+    :root, [data-theme="light"] {{
+      --bg-page:    #f8fafc;
+      --bg-card:    #ffffff;
+      --bg-muted:   #f1f5f9;
+      --bg-header:  #f8fafc;
+      --border:     #e2e8f0;
+      --text-1:     #0f172a;
+      --text-2:     #475569;
+      --text-3:     #94a3b8;
+      --accent:     #6366f1;
+      --accent-bg:  #eef2ff;
+      --pass-text:  #15803d;
+      --pass-bg:    #f0fdf4;
+      --warn-text:  #b45309;
+      --warn-bg:    #fffbeb;
+      --fail-text:  #b91c1c;
+      --fail-bg:    #fef2f2;
+      --shadow:     0 1px 3px 0 rgb(0 0 0 / 0.07);
+    }}
+    /* ── Design Tokens: Dark ────────────────────────────────────────────── */
+    [data-theme="dark"] {{
+      --bg-page:    #0f172a;
+      --bg-card:    #1e293b;
+      --bg-muted:   #1e293b;
+      --bg-header:  #1e293b;
+      --border:     #334155;
+      --text-1:     #f1f5f9;
+      --text-2:     #94a3b8;
+      --text-3:     #64748b;
+      --accent:     #818cf8;
+      --accent-bg:  #1e1b4b;
+      --pass-text:  #4ade80;
+      --pass-bg:    #052e16;
+      --warn-text:  #fbbf24;
+      --warn-bg:    #1c1400;
+      --fail-text:  #f87171;
+      --fail-bg:    #1c0505;
+      --shadow:     0 1px 3px 0 rgb(0 0 0 / 0.3);
+    }}
+    /* ── Density Scale ──────────────────────────────────────────────────── */
+    /* Default (comfortable) spacing: these vars are overridden per density. */
+    :root {{
+      --d-py:   0.75rem;   /* table cell vertical padding  */
+      --d-px:   1rem;      /* table cell horizontal padding */
+      --d-gap:  1rem;      /* grid/flex gap                 */
+      --d-card: 1.5rem;    /* card padding                  */
+    }}
+    [data-density="compact"]  {{ --d-py: 0.35rem;  --d-px: 0.625rem; --d-gap: 0.5rem;  --d-card: 1rem;  font-size: 0.875rem; }}
+    [data-density="spacious"] {{ --d-py: 1.125rem; --d-px: 1.375rem; --d-gap: 1.5rem;  --d-card: 2rem; }}
+    /* ── Audience Gating ────────────────────────────────────────────────── */
+    /* Sections marked .aud-manager are hidden for the executive audience.
+       Sections marked .aud-engineer are hidden for executive and manager.   */
+    [data-audience="executive"] .aud-manager,
+    [data-audience="executive"] .aud-engineer {{ display: none; }}
+    [data-audience="manager"]   .aud-engineer {{ display: none; }}
+    /* ── Base Styles ────────────────────────────────────────────────────── */
+    *, *::before, *::after {{ box-sizing: border-box; }}
+    body {{
+      background: var(--bg-page);
+      color: var(--text-1);
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      margin: 0; padding: 0;
+      transition: background 0.2s ease, color 0.2s ease;
+    }}
+    main {{ max-width: 64rem; margin: 0 auto; padding: 2.5rem 1.5rem; }}
+    /* ── Controls Bar ───────────────────────────────────────────────────── */
+    .ctrl-bar {{
+      position: sticky; top: 0; z-index: 20;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 1.5rem;
+      display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+      box-shadow: var(--shadow);
+    }}
+    .ctrl-brand {{ font-size: 0.7rem; font-weight: 700; letter-spacing: 0.15em; color: var(--accent); margin-right: auto; text-transform: uppercase; }}
+    .ctrl-group {{ display: flex; align-items: center; gap: 0.35rem; }}
+    .ctrl-label {{ font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }}
+    .ctrl-select, .ctrl-btn {{
+      font-size: 0.78rem; padding: 0.2rem 0.5rem;
+      border: 1px solid var(--border); border-radius: 0.375rem;
+      background: var(--bg-muted); color: var(--text-1); cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }}
+    .ctrl-select:hover, .ctrl-btn:hover {{ background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }}
+    /* ── Cards ──────────────────────────────────────────────────────────── */
+    .card {{
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: var(--d-card);
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow);
+    }}
+    .card-title {{ font-size: 1.125rem; font-weight: 600; color: var(--text-1); margin: 0 0 1rem; }}
+    .card-subtitle {{ font-size: 0.95rem; font-weight: 600; color: var(--text-1); margin: 1.25rem 0 0.625rem; }}
+    /* ── KPI Grid ───────────────────────────────────────────────────────── */
+    .kpi-grid {{ display: grid; gap: var(--d-gap); grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); margin-top: 1.25rem; }}
+    .kpi-cell {{ background: var(--bg-muted); border-radius: 0.75rem; padding: var(--d-py) var(--d-px); }}
+    .kpi-label {{ font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); margin: 0; }}
+    .kpi-value {{ font-size: 1.1rem; font-weight: 600; color: var(--text-1); margin: 0.2rem 0 0; }}
+    /* ── Tables ─────────────────────────────────────────────────────────── */
+    .tbl-wrap {{ border-radius: 0.75rem; overflow: hidden; border: 1px solid var(--border); margin-top: 1rem; }}
+    table {{ width: 100%; border-collapse: collapse; background: var(--bg-card); }}
+    thead tr {{ background: var(--bg-header); }}
+    thead th {{
+      padding: var(--d-py) var(--d-px);
+      text-align: left; font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2);
+    }}
+    tbody td {{ padding: var(--d-py) var(--d-px); color: var(--text-2); border-top: 1px solid var(--border); font-size: 0.875rem; }}
+    /* Row-level status tints driven by tr.pass / tr.warn / tr.fail classes.
+       These interact with the CSS token system so they invert correctly
+       in dark mode without any extra JavaScript. */
+    tbody tr.pass td {{ background: var(--pass-bg); color: var(--pass-text); }}
+    tbody tr.warn td {{ background: var(--warn-bg); color: var(--warn-text); }}
+    tbody tr.fail td {{ background: var(--fail-bg); color: var(--fail-text); }}
+    /* ── Status Labels ──────────────────────────────────────────────────── */
+    .status-pass {{ color: var(--pass-text); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }}
+    .status-warn {{ color: var(--warn-text); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }}
+    .status-fail {{ color: var(--fail-text); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }}
+    /* ── Badge ──────────────────────────────────────────────────────────── */
+    .badge {{ display: inline-block; border-radius: 999px; padding: 0.15rem 0.625rem; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; }}
+    .badge-accent {{ background: var(--accent-bg); color: var(--accent); }}
+    /* ── Inline code ─────────────────────────────────────────────────────── */
+    code {{ background: var(--bg-muted); border-radius: 0.25rem; padding: 0.1em 0.35em; font-size: 0.85em; color: var(--accent); }}
+  </style>
 </head>
-<body class=\"bg-slate-50 text-slate-900\">
-  <main class=\"mx-auto max-w-5xl px-6 py-10\">
-    <header class=\"mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm\">
-      <p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-slate-500\">BLSN</p>
-      <h1 class=\"mt-2 text-3xl font-bold tracking-tight text-slate-900\">Synthetic Validation Report</h1>
-      <p class=\"mt-3 text-sm text-slate-600\">Theme: <span class=\"font-semibold text-slate-800\">{theme}</span></p>
-      <div class=\"mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4\">
-        <div class=\"rounded-xl bg-slate-100 p-4\">
-          <p class=\"text-xs uppercase tracking-wide text-slate-500\">Vehicle</p>
-          <p class=\"mt-1 text-lg font-semibold text-slate-900\">{escape(str(params.get('vehicle_name', 'N/A')))}</p>
-        </div>
-        <div class=\"rounded-xl bg-slate-100 p-4\">
-          <p class=\"text-xs uppercase tracking-wide text-slate-500\">Cooling Mode</p>
-          <p class=\"mt-1 text-lg font-semibold text-slate-900\">{escape(str(params.get('cooling_mode', 'N/A')))}</p>
-        </div>
-        <div class=\"rounded-xl bg-slate-100 p-4\">
-          <p class=\"text-xs uppercase tracking-wide text-slate-500\">Nominal Mass Flow</p>
-          <p class=\"mt-1 text-lg font-semibold text-slate-900\">{escape(str(params.get('nominal_mass_flow_g_s', 'N/A')))} g/s</p>
-        </div>
-        <div class=\"rounded-xl bg-slate-100 p-4\">
-          <p class=\"text-xs uppercase tracking-wide text-slate-500\">Limits</p>
-          <p class=\"mt-1 text-lg font-semibold text-slate-900\">{escape(str(params.get('min_limit_g_s', 'N/A')))} - {escape(str(params.get('max_limit_g_s', 'N/A')))} g/s</p>
-        </div>
+<body>
+
+  <!-- ── Controls Bar: Theme / Density / Audience toggles ─────────────────
+       Preferences are persisted to localStorage under the "blsn_" namespace
+       so they survive page reloads. Selecting "auto" theme follows the OS
+       light/dark preference via the prefers-color-scheme media query.       -->
+  <nav class="ctrl-bar" role="toolbar" aria-label="Display controls">
+    <span class="ctrl-brand">BLSN</span>
+
+    <div class="ctrl-group">
+      <span class="ctrl-label" id="lbl-theme">Theme</span>
+      <select id="ctrl-theme" class="ctrl-select" onchange="setTheme(this.value)" aria-labelledby="lbl-theme">
+        <option value="light">☀ Light</option>
+        <option value="dark">🌙 Dark</option>
+        <option value="auto">⚙ Auto</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <span class="ctrl-label" id="lbl-density">Density</span>
+      <select id="ctrl-density" class="ctrl-select" onchange="setDensity(this.value)" aria-labelledby="lbl-density">
+        <option value="compact">Compact</option>
+        <option value="comfortable">Comfortable</option>
+        <option value="spacious">Spacious</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <span class="ctrl-label" id="lbl-audience">Audience</span>
+      <select id="ctrl-audience" class="ctrl-select" onchange="setAudience(this.value)" aria-labelledby="lbl-audience">
+        <option value="executive">Executive</option>
+        <option value="manager">Manager</option>
+        <option value="engineer">Engineer</option>
+      </select>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- ── Header / Overview  (visible to ALL audiences) ──────────────── -->
+    <header class="card">
+      <p style="font-size:0.68rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-3);margin:0">BLSN</p>
+      <h1 style="margin:0.4rem 0 0;font-size:1.875rem;font-weight:700;letter-spacing:-0.02em;color:var(--text-1)">Synthetic Validation Report</h1>
+      <p style="margin:0.4rem 0 0;font-size:0.8rem;color:var(--text-3)">
+        Theme&nbsp;<strong style="color:var(--text-2)">{theme}</strong>
+        &nbsp;·&nbsp;Density&nbsp;<strong style="color:var(--text-2)">{density}</strong>
+        &nbsp;·&nbsp;Audience&nbsp;<strong style="color:var(--text-2)">{audience}</strong>
+      </p>
+      <div class="kpi-grid">
+        <div class="kpi-cell"><p class="kpi-label">Vehicle</p><p class="kpi-value">{escape(str(params.get('vehicle_name', 'N/A')))}</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Cooling Mode</p><p class="kpi-value">{escape(str(params.get('cooling_mode', 'N/A')))}</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Nominal Flow</p><p class="kpi-value">{escape(str(params.get('nominal_mass_flow_g_s', 'N/A')))} g/s</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Limits</p><p class="kpi-value">{escape(str(params.get('min_limit_g_s', 'N/A')))}–{escape(str(params.get('max_limit_g_s', 'N/A')))} g/s</p></div>
       </div>
     </header>
 
-    <section class=\"mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm\">
-      <h2 class=\"text-xl font-semibold text-slate-900\">Sanity Check Telemetry</h2>
-      <table class=\"mt-4 w-full overflow-hidden rounded-xl border border-slate-200 bg-white\">
-        <thead>
-          <tr class=\"bg-slate-100 text-left\">
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Status</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Message</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sanity_rows}
-        </tbody>
-      </table>
-    </section>
-
-    <section class=\"mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm\">
-      <h2 class=\"text-xl font-semibold text-slate-900\">Tuple Execution Telemetry Targets (seconds)</h2>
-      <table class=\"mt-4 w-full overflow-hidden rounded-xl border border-slate-200 bg-white\">
-        <thead>
-          <tr class=\"bg-slate-100 text-left\">
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Metric</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Target</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Warn Threshold</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Fail Threshold</th>
-          </tr>
-        </thead>
-        <tbody>
-          {telemetry_rows}
-        </tbody>
-      </table>
-    </section>
-
-    <section class=\"mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm\">
-      <h2 class=\"text-xl font-semibold text-slate-900\">Metric Markdown Slugs</h2>
-      <ul class=\"mt-4 list-disc space-y-2 pl-5 text-sm\">{metric_links}</ul>
-      <div class=\"mt-6 grid gap-4\">{previews}</div>
-    </section>
-
-    <section class=\"mb-8 rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm\">
-      <h2 class=\"text-xl font-semibold text-slate-900\">System Verification: Claimed vs. Actual</h2>
-      <p class=\"mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900\">Claimed Limits: {claimed_limits} | Actually Tested Limits: {tested_limits} -&gt; STATUS: <strong>{verification_status}</strong></p>
-      <div class=\"mt-4 grid gap-4 md:grid-cols-2\">
-        <div class=\"rounded-xl border border-slate-200 bg-slate-50 p-4\">
-          <p class=\"text-xs uppercase tracking-wide text-slate-500\">Execution Velocity</p>
-          <p class=\"mt-1 text-sm text-slate-800\">Total Runtime (engine + tests): <strong>{total_runtime:.4f}s</strong></p>
-        </div>
-        <div class=\"rounded-xl border border-slate-200 bg-slate-50 p-4\">
-          <p class=\"text-xs uppercase tracking-wide text-slate-500\">Validation Strictness</p>
-          <p class=\"mt-1 text-sm text-slate-800\">Pass: <strong>{pass_ratio:.2%}</strong> | Fail: <strong>{fail_ratio:.2%}</strong> | Skip: <strong>{skip_ratio:.2%}</strong></p>
-        </div>
+    <!-- ── Sanity Check Telemetry  (visible to ALL audiences) ─────────── -->
+    <section class="card">
+      <h2 class="card-title">Sanity Check Telemetry</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Status</th><th>Message</th></tr></thead>
+          <tbody>{sanity_rows}</tbody>
+        </table>
       </div>
     </section>
 
-    <section class=\"mb-8 rounded-2xl border border-violet-200 bg-white p-6 shadow-sm\">
-      <h2 class=\"text-xl font-semibold text-slate-900\">Wave 12: SPC &amp; Telemetry Stats</h2>
-      <div class=\"mt-4 grid gap-4 md:grid-cols-2\">
-        <div class=\"rounded-xl border border-slate-200 bg-slate-50 p-4\">
-          <p class=\"text-xs uppercase tracking-wide text-slate-500\">Runtime Drift</p>
-          <p class=\"mt-1 text-sm text-slate-800\">Current Runtime: <strong>{total_runtime:.4f}s</strong></p>
-          <p class=\"text-sm text-slate-700\">Previous Moving Average: <strong>{previous_runtime:.4f}s</strong></p>
-        </div>
-        <div class=\"rounded-xl border border-slate-200 bg-slate-50 p-4\">
-          <p class=\"text-xs uppercase tracking-wide text-slate-500\">Historical Control</p>
-          <p class=\"mt-1 text-sm text-slate-800\">Total Accumulated Runs: <strong>{total_runs}</strong></p>
-          <p class=\"text-sm text-slate-700\">Success Rate: <strong>{success_rate:.2%}</strong></p>
-        </div>
+    <!-- ── System Verification KPI  (visible to ALL audiences) ──────────
+         Executive audience sees the high-level pass/fail verdict; manager
+         and engineer audiences see the full ratio breakdown too.            -->
+    <section class="card">
+      <h2 class="card-title">System Verification: Claimed vs. Actual</h2>
+      <p style="margin:0 0 1rem;padding:0.75rem 1rem;background:var(--pass-bg);border-radius:0.5rem;font-size:0.875rem;color:var(--pass-text)">
+        Claimed Limits: <strong>{claimed_limits}</strong>
+        &nbsp;|&nbsp; Actually Tested: <strong>{tested_limits}</strong>
+        &nbsp;→ STATUS: <strong>{verification_status}</strong>
+      </p>
+      <div class="kpi-grid">
+        <div class="kpi-cell"><p class="kpi-label">Total Runtime</p><p class="kpi-value">{total_runtime:.2f}s</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Pass Ratio</p><p class="kpi-value" style="color:var(--pass-text)">{pass_ratio:.1%}</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Fail Ratio</p><p class="kpi-value" style="color:var(--fail-text)">{fail_ratio:.1%}</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Skip Ratio</p><p class="kpi-value" style="color:var(--warn-text)">{skip_ratio:.1%}</p></div>
       </div>
-      <p class=\"mt-4 text-sm text-slate-700\">DoE Factors - A: <strong>{factor_a}</strong>, B: <strong>{factor_b}</strong>, C: <strong>{factor_c}</strong></p>
-      <table class=\"mt-4 w-full overflow-hidden rounded-xl border border-slate-200 bg-white\">
-        <thead>
-          <tr class=\"bg-slate-100 text-left\">
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Principal Component</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Eigenvalue</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Explained Variance</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Highest Weight Variable</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pca_rows_html}
-        </tbody>
-      </table>
     </section>
 
-    <section class=\"mb-8 rounded-2xl border border-cyan-200 bg-white p-6 shadow-sm\">
-      <h2 class=\"text-xl font-semibold text-slate-900\">Interactive Plotly Visualizations</h2>
-      <div id=\"plotly-telemetry-chart\" class=\"mt-4 h-[420px] w-full\"></div>
-      <div id=\"plotly-pca-chart\" class=\"mt-6 h-[420px] w-full\"></div>
-    </section>
-
-    <section class=\"mb-8 rounded-2xl border border-amber-200 bg-white p-6 shadow-sm\">
-      <h2 class=\"text-xl font-semibold text-slate-900\">System Priority &amp; Bottleneck Ranking (Bradley-Terry)</h2>
-      <p class=\"mt-3 text-sm text-slate-700\">Pairwise probability model: <code>P(i &gt; j) = p_i / (p_i + p_j)</code></p>
-      <h3 class=\"mt-5 text-lg font-semibold text-slate-900\">Global Repo Ranking</h3>
-      <table class=\"mt-3 w-full overflow-hidden rounded-xl border border-slate-200 bg-white\">
-        <thead>
-          <tr class=\"bg-slate-100 text-left\">
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Rank</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Artifact</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">BT Strength</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Win Prob vs Top</th>
-          </tr>
-        </thead>
-        <tbody>{global_bt_rows}</tbody>
-      </table>
-
-      <h3 class=\"mt-6 text-lg font-semibold text-slate-900\">Inter-Category Ranking</h3>
-      <table class=\"mt-3 w-full overflow-hidden rounded-xl border border-slate-200 bg-white\">
-        <thead>
-          <tr class=\"bg-slate-100 text-left\">
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Rank</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Category</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Win Prob vs Top</th>
-          </tr>
-        </thead>
-        <tbody>{inter_bt_rows}</tbody>
-      </table>
-
-      <h3 class=\"mt-6 text-lg font-semibold text-slate-900\">QPLANT Requirements Ranking Bridge</h3>
-      <table class=\"mt-3 w-full overflow-hidden rounded-xl border border-slate-200 bg-white\">
-        <thead>
-          <tr class=\"bg-slate-100 text-left\">
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Rank</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Requirement</th>
-            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Win Prob vs Top</th>
-          </tr>
-        </thead>
-        <tbody>{requirement_rows}</tbody>
-      </table>
-    </section>
-
-    <section class=\"rounded-2xl border border-indigo-200 bg-gradient-to-br from-white to-indigo-50 p-6 shadow-sm\">
-      <div class=\"mb-4 flex items-center justify-between gap-4\">
-        <h2 class=\"text-xl font-semibold text-slate-900\">Mermaid System Flow</h2>
-        <span class=\"rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-700\">Diagram</span>
+    <!-- ── Tuple Execution Telemetry Targets  (manager + engineer) ──────
+         Executive summary omits detailed threshold tables; managers and
+         engineers see the full target / warn / fail breakdown.              -->
+    <section class="card aud-manager">
+      <h2 class="card-title">Tuple Execution Telemetry Targets (seconds)</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Metric</th><th>Target</th><th>Warn</th><th>Fail</th></tr></thead>
+          <tbody>{telemetry_rows}</tbody>
+        </table>
       </div>
-      <div class=\"rounded-xl border border-indigo-100 bg-white p-4\">
-        <div class=\"mermaid\">
+    </section>
+
+    <!-- ── Interactive Plotly Visualizations  (manager + engineer) ──────
+         Charts are rendered with a theme-aware Plotly template; re-rendered
+         automatically when the theme toggle changes via Plotly.react().     -->
+    <section class="card aud-manager">
+      <h2 class="card-title">Interactive Visualizations</h2>
+      <p style="font-size:0.8rem;color:var(--text-3);margin:0 0 1rem">Telemetry trend and PCA bottleneck analysis — theme-aware rendering.</p>
+      <div id="plotly-telemetry-chart" style="width:100%;min-height:400px;border-radius:0.5rem;overflow:hidden;"></div>
+      <div id="plotly-pca-chart" style="width:100%;min-height:400px;border-radius:0.5rem;overflow:hidden;margin-top:1.5rem;"></div>
+    </section>
+
+    <!-- ── Bradley-Terry Ranking  (manager + engineer) ──────────────────
+         Pairwise comparison ranking for global repo, inter-category,
+         and QPLANT requirements.                                            -->
+    <section class="card aud-manager">
+      <h2 class="card-title">System Priority &amp; Bottleneck Ranking (Bradley-Terry)</h2>
+      <p style="font-size:0.85rem;color:var(--text-2);margin:0 0 0.75rem">Pairwise probability model: <code>P(i &gt; j) = p_i / (p_i + p_j)</code></p>
+      <h3 class="card-subtitle">Global Repo Ranking</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Rank</th><th>Artifact</th><th>BT Strength</th><th>Win Prob vs Top</th></tr></thead>
+          <tbody>{global_bt_rows}</tbody>
+        </table>
+      </div>
+      <h3 class="card-subtitle">Inter-Category Ranking</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Rank</th><th>Category</th><th>Win Prob vs Top</th></tr></thead>
+          <tbody>{inter_bt_rows}</tbody>
+        </table>
+      </div>
+      <h3 class="card-subtitle">QPLANT Requirements Ranking Bridge</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Rank</th><th>Requirement</th><th>Win Prob vs Top</th></tr></thead>
+          <tbody>{requirement_rows}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── SPC, DoE & PCA Proof  (engineer only) ────────────────────────
+         Full statistical detail: runtime drift, historical success rate,
+         DoE factor map and principal-component analysis eigenvalues.        -->
+    <section class="card aud-engineer">
+      <h2 class="card-title">Wave 12: SPC &amp; Telemetry Stats</h2>
+      <div class="kpi-grid">
+        <div class="kpi-cell"><p class="kpi-label">Runtime Drift</p><p class="kpi-value">{total_runtime:.4f}s</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Prev Moving Avg</p><p class="kpi-value">{previous_runtime:.4f}s</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Total Runs</p><p class="kpi-value">{total_runs}</p></div>
+        <div class="kpi-cell"><p class="kpi-label">Success Rate</p><p class="kpi-value" style="color:var(--pass-text)">{success_rate:.1%}</p></div>
+      </div>
+      <p style="font-size:0.875rem;color:var(--text-2);margin-top:1rem">
+        DoE Factors — A: <strong>{factor_a}</strong> · B: <strong>{factor_b}</strong> · C: <strong>{factor_c}</strong>
+      </p>
+      <h3 class="card-subtitle">Principal Component Analysis (PCA Proof)</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Principal Component</th><th>Eigenvalue</th><th>Explained Variance</th><th>Highest Weight Variable</th></tr></thead>
+          <tbody>{pca_rows_html}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Metric Markdown Slugs  (engineer only) ───────────────────────
+         Quick-links to generated per-metric markdown pages plus inline
+         previews of the threshold bullet points.                            -->
+    <section class="card aud-engineer">
+      <h2 class="card-title">Metric Markdown Slugs</h2>
+      <ul style="margin:0 0 1rem;padding-left:1.25rem;font-size:0.875rem;line-height:2">{metric_links}</ul>
+      <div style="display:grid;gap:var(--d-gap)">{previews}</div>
+    </section>
+
+    <!-- ── Mermaid Architecture Diagram  (engineer only) ────────────────
+         Shows the data-flow from SSOT config through the pipeline to all
+         output artefacts.  Requires mermaid.js loaded externally.          -->
+    <section class="card aud-engineer" style="background:linear-gradient(135deg,var(--bg-card) 0%,var(--accent-bg) 100%)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem">
+        <h2 class="card-title" style="margin:0">Mermaid System Flow</h2>
+        <span class="badge badge-accent">Diagram</span>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:0.75rem;padding:1rem">
+        <div class="mermaid">
           graph LR;
             SSOT[SSOT Config] --> PIPELINE[Pipeline Execution];
             PIPELINE --> MARKDOWN[Markdown Slug Pages];
@@ -606,35 +810,150 @@ def generate_html_report(
         </div>
       </div>
     </section>
+
   </main>
+
   <script>
+    /* ── BLSN Report UI Controls ─────────────────────────────────────────
+       All user preferences are persisted to localStorage under the "blsn_"
+       namespace so they survive hard reloads without server round-trips.
+
+       Theme:    light | dark | auto
+         "auto" resolves to light or dark via prefers-color-scheme and keeps
+         the <html data-theme> attribute updated when the OS preference
+         changes (e.g. switching between light and dark system themes).
+
+       Density:  compact | comfortable | spacious
+         Controls the --d-py / --d-px / --d-gap / --d-card CSS tokens that
+         scale table cell padding and card gutters without reflowing the page.
+
+       Audience: executive | manager | engineer
+         CSS [data-audience] selectors hide .aud-manager and .aud-engineer
+         sections for less technical readers.  Changing this value simply
+         updates the data attribute; no DOM nodes are added or removed.
+
+       Plotly charts are re-rendered via Plotly.react() rather than
+       Plotly.newPlot() when the theme changes so the existing DOM element
+       is reused and transitions feel instant.
+    ── */
     (function () {{
-      const emptyLayout = {{
+      'use strict';
+
+      const PREF_NS = 'blsn_';
+      const getPref = (k, def) => localStorage.getItem(PREF_NS + k) || def;
+      const setPref = (k, v)   => localStorage.setItem(PREF_NS + k, v);
+
+      const root = document.documentElement;
+
+      /* Resolve the "auto" theme sentinel using the OS preference. */
+      function resolveTheme(raw) {{
+        if (raw !== 'auto') return raw;
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }}
+
+      /* Apply a data-attribute and keep its matching <select> in sync. */
+      function applyAttr(attr, selectId, value) {{
+        root.setAttribute('data-' + attr, value);
+        const el = document.getElementById(selectId);
+        if (el) el.value = value;
+        setPref(attr, value);
+      }}
+
+      /* ── Plotly theme-aware rendering ──────────────────────────────── */
+      let _payload = null;  /* cached payload to allow re-render on theme change */
+
+      /* Map report theme to the matching built-in Plotly template name. */
+      const plotlyTpl = (themeRaw) =>
+        resolveTheme(themeRaw) === 'dark' ? 'plotly_dark' : 'plotly_white';
+
+      /* Patch a Plotly chart layout to inherit the current theme colours. */
+      function patchLayout(chart, themeRaw) {{
+        const isDark = resolveTheme(themeRaw) === 'dark';
+        return Object.assign({{}}, chart.layout || {{}}, {{
+          template:      plotlyTpl(themeRaw),
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor:  'rgba(0,0,0,0)',
+          font:          {{ color: isDark ? '#94a3b8' : '#475569' }},
+          xaxis: Object.assign({{}}, (chart.layout || {{}}).xaxis, {{ gridcolor: isDark ? '#334155' : '#e2e8f0' }}),
+          yaxis: Object.assign({{}}, (chart.layout || {{}}).yaxis, {{ gridcolor: isDark ? '#334155' : '#e2e8f0' }}),
+        }});
+      }}
+
+      /* Re-render both Plotly charts with the resolved theme. */
+      function rerenderPlotly(themeRaw) {{
+        if (!window.Plotly || !_payload) return;
+        const charts = _payload.charts || {{}};
+        const tel = charts.telemetry_combo  || {{}};
+        const pca = charts.pca_bottlenecks  || {{}};
+        Plotly.react('plotly-telemetry-chart', tel.data || [], patchLayout(tel, themeRaw));
+        Plotly.react('plotly-pca-chart',        pca.data || [], patchLayout(pca, themeRaw));
+      }}
+
+      /* ── Public setters wired to onchange handlers ─────────────────── */
+      window.setTheme = function (v) {{
+        /* Apply the resolved value to data-theme but store the raw choice
+           (including "auto") so the select always reflects user intent.   */
+        root.setAttribute('data-theme', resolveTheme(v));
+        const el = document.getElementById('ctrl-theme');
+        if (el) el.value = v;
+        setPref('theme', v);
+        rerenderPlotly(v);
+      }};
+      window.setDensity  = (v) => applyAttr('density',  'ctrl-density',  v);
+      window.setAudience = (v) => applyAttr('audience', 'ctrl-audience', v);
+
+      /* ── Initialise from saved preferences (fall back to SSOT defaults) */
+      const initTheme    = getPref('theme',    '{theme}');
+      const initDensity  = getPref('density',  '{density}');
+      const initAudience = getPref('audience', '{audience}');
+
+      /* Apply theme without going through the setter so the select shows
+         "auto" rather than the resolved value when stored as "auto".      */
+      root.setAttribute('data-theme', resolveTheme(initTheme));
+      const themeEl = document.getElementById('ctrl-theme');
+      if (themeEl) themeEl.value = initTheme;
+
+      applyAttr('density',  'ctrl-density',  initDensity);
+      applyAttr('audience', 'ctrl-audience', initAudience);
+
+      /* ── Plotly payload fetch ──────────────────────────────────────── */
+      const emptyLayout = (themeRaw) => ({{
+        template:      plotlyTpl(themeRaw),
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor:  'rgba(0,0,0,0)',
         xaxis: {{ visible: false }},
         yaxis: {{ visible: false }},
-        annotations: [{{ text: 'No Plotly payload available', showarrow: false, xref: 'paper', yref: 'paper', x: 0.5, y: 0.5 }}]
-      }};
-
-      const renderFallback = () => {{
-        Plotly.newPlot('plotly-telemetry-chart', [], emptyLayout);
-        Plotly.newPlot('plotly-pca-chart', [], emptyLayout);
-      }};
+        annotations: [{{
+          text: 'No Plotly payload available',
+          showarrow: false, xref: 'paper', yref: 'paper', x: 0.5, y: 0.5,
+        }}],
+      }});
 
       fetch('visuals/plotly_payloads.json')
-        .then((response) => response.ok ? response.json() : Promise.reject(new Error('Missing Plotly payload')))
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
         .then((payload) => {{
-          const charts = payload && payload.charts ? payload.charts : {{}};
-          const telemetry = charts.telemetry_combo || {{}};
-          const pca = charts.pca_bottlenecks || {{}};
-          Plotly.newPlot('plotly-telemetry-chart', telemetry.data || [], telemetry.layout || emptyLayout);
-          Plotly.newPlot('plotly-pca-chart', pca.data || [], pca.layout || emptyLayout);
+          _payload = payload;
+          rerenderPlotly(getPref('theme', '{theme}'));
         }})
-        .catch(() => renderFallback());
+        .catch(() => {{
+          const el = emptyLayout(getPref('theme', '{theme}'));
+          Plotly.newPlot('plotly-telemetry-chart', [], el);
+          Plotly.newPlot('plotly-pca-chart',        [], el);
+        }});
+
+      /* Keep "auto" theme in sync when the OS preference changes at runtime
+         (e.g. user switches system dark mode while the tab is open).       */
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {{
+        const stored = getPref('theme', '{theme}');
+        if (stored === 'auto') {{
+          root.setAttribute('data-theme', resolveTheme('auto'));
+          rerenderPlotly('auto');
+        }}
+      }});
     }})();
   </script>
 </body>
-</html>
-""".strip()
+</html>""".strip()
 
 
 def _generate_slides(

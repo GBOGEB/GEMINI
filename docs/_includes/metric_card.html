@@ -8,18 +8,34 @@
   {% endif %}
 {% endfor %}
 
-<section class="metric-card">
-  <h2>{{ include.metric_id }}</h2>
+<!-- Metric card: theme-aware colours via CSS custom properties.
+     The card inherits --bg-card, --border, --text-* and threshold colours
+     from the layout's design-token <style> block so it automatically
+     adapts to both light and dark mode.                                    -->
+<section style="border-radius:0.75rem;border:1px solid var(--border);background:var(--bg-card);padding:1.25rem;margin-bottom:1.5rem;box-shadow:var(--shadow,none)">
+  <h2 style="margin:0 0 0.75rem;font-size:1rem;font-weight:600;color:var(--text-1)">{{ include.metric_id }}</h2>
+
   {% if requirement %}
-    <p>QPLANT rank: {{ requirement.rank }} (strength: {{ requirement.strength }})</p>
+    <p style="margin:0 0 0.5rem;font-size:0.8rem;color:var(--text-2)">
+      QPLANT rank: <strong style="color:var(--accent)">{{ requirement.rank }}</strong>
+      &nbsp;(strength: <strong>{{ requirement.strength }}</strong>)
+    </p>
   {% endif %}
+
   {% if limits and limits.size == 3 %}
-    <ul>
-      <li>Target threshold: {{ limits[0] }}</li>
-      <li>Warn threshold: {{ limits[1] }}</li>
-      <li>Fail threshold: {{ limits[2] }}</li>
+    <!-- Threshold badges: green/amber/red map to pass/warn/fail tokens. -->
+    <ul style="margin:0;padding:0;list-style:none;display:flex;gap:0.5rem;flex-wrap:wrap">
+      <li style="border-radius:0.375rem;padding:0.2rem 0.6rem;font-size:0.75rem;font-weight:600;background:var(--pass-bg,#f0fdf4);color:var(--pass-text,#15803d)">
+        ✓ Target: {{ limits[0] }}s
+      </li>
+      <li style="border-radius:0.375rem;padding:0.2rem 0.6rem;font-size:0.75rem;font-weight:600;background:var(--warn-bg,#fffbeb);color:var(--warn-text,#b45309)">
+        ⚠ Warn: {{ limits[1] }}s
+      </li>
+      <li style="border-radius:0.375rem;padding:0.2rem 0.6rem;font-size:0.75rem;font-weight:600;background:var(--fail-bg,#fef2f2);color:var(--fail-text,#b91c1c)">
+        ✗ Fail: {{ limits[2] }}s
+      </li>
     </ul>
   {% else %}
-    <p>No tuple limits available for this metric.</p>
+    <p style="font-size:0.8rem;color:var(--text-3)">No tuple limits available for this metric.</p>
   {% endif %}
 </section>

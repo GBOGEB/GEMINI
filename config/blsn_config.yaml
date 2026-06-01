@@ -2,7 +2,15 @@ system_meta:
   presentation_layer:
     enable_lipstick: true
     css_framework_cdn: https://cdn.tailwindcss.com
+    # Colour theme: "light" | "dark" | "auto"  (auto follows OS preference)
     theme: light
+    # Information density: "compact" | "comfortable" | "spacious"
+    density: comfortable
+    # Audience depth controls which report sections are visible:
+    #   executive  – high-level KPIs and sanity status only
+    #   manager    – adds telemetry targets, Plotly charts, BT ranking
+    #   engineer   – full detail including PCA, DoE, Mermaid diagram
+    audience: engineer
 simulation_parameters:
   nominal_mass_flow_g_s: 110
   max_limit_g_s: 140
