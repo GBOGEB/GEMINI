@@ -1,9 +1,9 @@
 ---
 layout: default
-title: "Wave 16 – Next-Wave Governance Plan"
+title: "Wave 16 – Governance Plan"
 ---
 
-# Wave 16 – Next-Wave Governance Plan
+# Wave 16 – Governance Plan
 
 > **Recommendation: `TEMPLATE_DUPLICATION_WITH_DELTA`**
 >
