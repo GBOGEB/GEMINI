@@ -1,3 +1,9 @@
+system_meta:
+  presentation_layer:
+    enable_lipstick: true
+    css_framework_cdn: "https://cdn.tailwindcss.com"
+    theme: "light"
+
 simulation_parameters:
   nominal_mass_flow_g_s: 110
   max_limit_g_s: 140
