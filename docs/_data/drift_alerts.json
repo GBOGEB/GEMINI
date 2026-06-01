@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-01T05:08:05.152374+00:00",
+  "generated_at": "2026-06-01T03:25:11.863986+00:00",
   "wave": "15",
   "any_alert": false,
   "drift": {
@@ -20,7 +20,7 @@
       "unknown-python"
     ],
     "comparisons": [],
-    "scipy_available": false,
+    "scipy_available": true,
     "summary": "No factor-level comparisons available (need \u22652 distinct python_version levels with \u22652 samples each)."
   }
 }
