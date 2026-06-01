@@ -80,7 +80,7 @@ def _count_validated_parameter_tests(pytest_report: dict) -> int:
         if any(keyword in nodeid for keyword in keywords):
             matched += 1
 
-    return matched or len([test for test in tests if isinstance(test, dict)])
+    return matched
 
 
 def _load_pipeline_runtime_seconds() -> float:
