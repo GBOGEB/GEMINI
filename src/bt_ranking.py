@@ -17,6 +17,7 @@ KPI_DASHBOARD_PATH = DOCS_DIR / "kpi_dashboard.json"
 INDEX_PATH = DOCS_DIR / "index.json"
 SSOT_PATH = ROOT / "config" / "blsn_config.yaml"
 OUTPUT_PATH = DOCS_DIR / "bt_ranking.json"
+FEDERATION_CHERRY_PICK_PATH = DOCS_DIR / "federation" / "federation_cherry_pick.json"
 
 
 @dataclass
@@ -200,7 +201,12 @@ def _extract_monitored_metrics(ssot: dict) -> list[str]:
 def _requirement_rankings(ssot: dict, pca_weights: dict[str, float]) -> dict:
     metrics = _extract_monitored_metrics(ssot)
     if not metrics:
-        return {"global": [], "by_category": {}}
+        return {
+            "global": [],
+            "by_category": {},
+            "federation_external_global": [],
+            "global_with_federation": [],
+        }
 
     ordered_weights = list(pca_weights.values()) or [1.0]
     entries: list[RankEntry] = []
@@ -216,13 +222,123 @@ def _requirement_rankings(ssot: dict, pca_weights: dict[str, float]) -> dict:
     return {
         "global": _rank_entries(entries),
         "by_category": {category: _rank_entries(items) for category, items in sorted(by_category.items())},
+        "federation_external_global": [],
+        "global_with_federation": _rank_entries(entries),
     }
+
+
+def _federation_entries(federation_snapshot: dict, pca_weights: dict[str, float]) -> list[RankEntry]:
+    if not isinstance(federation_snapshot, dict):
+        return []
+
+    runtime_weight = abs(float(pca_weights.get("runtime_seconds", 1.0)))
+    fail_weight = abs(float(pca_weights.get("fail_rate", 1.0)))
+
+    external_entries: list[RankEntry] = []
+
+    for item in federation_snapshot.get("abacus_top_slowest_tests", []):
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name", "")).strip()
+        if not name:
+            continue
+        variance = abs(float(item.get("variance", 0.0)))
+        score = abs(float(item.get("score", 0.0)))
+        strength = (1.0 + variance) * (1.0 + math.log1p(score)) * max(runtime_weight, 1e-9)
+        external_entries.append(
+            RankEntry(
+                name=f"ABACUS::{name}",
+                category="Federation:ABACUS",
+                strength=max(strength, 1e-9),
+            )
+        )
+
+    for item in federation_snapshot.get("codex_top_governance_violations", []):
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name", "")).strip()
+        if not name:
+            continue
+        variance = abs(float(item.get("variance", 0.0)))
+        score = abs(float(item.get("score", 0.0)))
+        strength = (1.0 + variance) * (1.0 + math.log1p(score)) * max(fail_weight, 1e-9)
+        external_entries.append(
+            RankEntry(
+                name=f"CODEX::{name}",
+                category="Federation:CODEX",
+                strength=max(strength, 1e-9),
+            )
+        )
+
+    return external_entries
+
+
+def _merge_requirement_rankings(base_rankings: dict, external_entries: list[RankEntry]) -> dict:
+    if not external_entries:
+        return base_rankings
+
+    external_by_category: defaultdict[str, list[RankEntry]] = defaultdict(list)
+    for entry in external_entries:
+        external_by_category[entry.category].append(entry)
+
+    merged_by_category = {
+        category: list(items)
+        for category, items in base_rankings.get("by_category_entries", {}).items()
+        if isinstance(items, list)
+    }
+    for category, items in external_by_category.items():
+        merged_by_category.setdefault(category, []).extend(items)
+
+    merged_entries = list(base_rankings.get("global_entries", [])) + external_entries
+
+    return {
+        "global_entries": merged_entries,
+        "by_category_entries": merged_by_category,
+        "global": _rank_entries(base_rankings.get("global_entries", [])),
+        "by_category": {
+            category: _rank_entries(items) for category, items in sorted(base_rankings.get("by_category_entries", {}).items())
+        },
+        "federation_external_global": _rank_entries(external_entries),
+        "global_with_federation": _rank_entries(merged_entries),
+    }
+
+
+def _requirement_rankings_with_federation(
+    ssot: dict, pca_weights: dict[str, float], federation_snapshot: dict
+) -> dict:
+    metrics = _extract_monitored_metrics(ssot)
+    if not metrics:
+        return {
+            "global": [],
+            "by_category": {},
+            "federation_external_global": _rank_entries(_federation_entries(federation_snapshot, pca_weights)),
+            "global_with_federation": _rank_entries(_federation_entries(federation_snapshot, pca_weights)),
+        }
+
+    ordered_weights = list(pca_weights.values()) or [1.0]
+    entries: list[RankEntry] = []
+    by_category: defaultdict[str, list[RankEntry]] = defaultdict(list)
+
+    for index, metric in enumerate(metrics):
+        category = _metric_category(metric, index)
+        strength = abs(ordered_weights[index % len(ordered_weights)]) + 1e-9
+        entry = RankEntry(name=metric, category=category, strength=strength)
+        entries.append(entry)
+        by_category[category].append(entry)
+
+    base_rankings = {
+        "global_entries": entries,
+        "by_category_entries": by_category,
+    }
+    external_entries = _federation_entries(federation_snapshot, pca_weights)
+    return _merge_requirement_rankings(base_rankings, external_entries)
 
 
 def build_bt_output() -> dict:
     kpi_dashboard = _load_json(KPI_DASHBOARD_PATH)
     index_items = _load_json_list(INDEX_PATH)
     ssot = _load_yaml(SSOT_PATH)
+    federation_snapshot = _load_json(FEDERATION_CHERRY_PICK_PATH)
 
     pca_weights = _primary_pca_weights(kpi_dashboard)
     if not pca_weights:
@@ -235,7 +351,7 @@ def build_bt_output() -> dict:
         }
 
     ranking_sets = _global_and_category_rankings(index_items, pca_weights)
-    requirements = _requirement_rankings(ssot, pca_weights)
+    requirements = _requirement_rankings_with_federation(ssot, pca_weights, federation_snapshot)
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -245,6 +361,7 @@ def build_bt_output() -> dict:
         "inter_category_ranking": ranking_sets["inter_category_ranking"],
         "intra_category_ranking": ranking_sets["intra_category_ranking"],
         "qplant_requirements_ranking": requirements,
+        "federation_sources": federation_snapshot.get("sources", {}) if isinstance(federation_snapshot, dict) else {},
     }
 
 

@@ -90,6 +90,20 @@ jobs:
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
         run: python src/indexer.py
 
+      - name: Run Federation Artifact Bridge
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python src/federation_bridge.py
+
+      - name: Build Statistical Engine
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python src/stats_engine.py
+
+      - name: Build Bradley-Terry Ranking
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python src/bt_ranking.py
+
       - name: Archive Engineering Outputs
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
