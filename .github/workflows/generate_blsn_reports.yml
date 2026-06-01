@@ -2,33 +2,70 @@ name: Generate Code-Driven BLSN Reports
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  build-and-document:
-    runs-on: ubuntu-latest
+  full-matrix-validation:
+    name: Run (${{ matrix.os }} - Py ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        include:
+          - os: windows-latest
+            python-version: "3.12"
+          - os: ubuntu-latest
+            python-version: "pypy-3.9"
 
     steps:
-    - name: Checkout Repository Source
-      uses: actions/checkout@v4
+      - name: Checkout Repository Source
+        uses: actions/checkout@v4
 
-    - name: Setup Python Environment
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install Configuration Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pyyaml
+      - name: Install Core & Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest ruff yamllint pyyaml matplotlib
 
-    - name: Execute Idempotent BLSN Engine
-      run: python src/pipeline.py
+      - name: Data Substrate Linting (YAML & JSON)
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: |
+          echo "=== YAML LINTING ==="
+          yamllint config/blsn_config.yaml -d "{extends: default, rules: {line-length: disable}}"
+          echo "=== JSON LINTING ==="
+          find . -name "*.json" -print0 | xargs -0 -r -I {} python -m json.tool {} > /dev/null
+          echo "--> All YAML and JSON substrates structurally validated."
 
-    - name: Archive Engineering Outputs
-      uses: actions/upload-artifact@v4
-      with:
-        name: blsn-html-and-charts
-        path: output/
+      - name: Python Linting (Ruff Check)
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: ruff check .
+
+      - name: Technical Debt Radar (Ruff 3.12 Upgrade Check)
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
+        run: |
+          echo "=== TECHNICAL DEBT REPORT ==="
+          ruff check . --select UP --target-version py312 --output-format=github || true
+
+      - name: Logic Validation & Speed Telemetry (Pytest)
+        id: runtime_test
+        continue-on-error: ${{ matrix.python-version != '3.9' || matrix.os != 'ubuntu-latest' }}
+        run: pytest -v --showlocals --durations=0
+
+      - name: Execute Idempotent BLSN Engine
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        run: python src/pipeline.py
+
+      - name: Archive Engineering Outputs
+        if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: blsn-html-and-charts
+          path: output/
