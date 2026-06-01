@@ -128,7 +128,7 @@ def _extract_tuple_telemetry(ssot: dict) -> list[tuple[str, tuple[float, float, 
             continue
         if not isinstance(values, list) or len(values) != 3:
             continue
-        if not all(isinstance(value, int | float) for value in values):
+        if not all(isinstance(value, (int, float)) for value in values):
             continue
         target, warn, fail = (float(values[0]), float(values[1]), float(values[2]))
         tuples.append((metric_name, (target, warn, fail)))

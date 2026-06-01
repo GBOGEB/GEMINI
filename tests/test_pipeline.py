@@ -21,9 +21,9 @@ def test_load_config_has_required_limits() -> None:
     maximum = params["max_limit_g_s"]
     minimum = params["min_limit_g_s"]
 
-    assert isinstance(nominal, int | float)
-    assert isinstance(maximum, int | float)
-    assert isinstance(minimum, int | float)
+    assert isinstance(nominal, (int, float))
+    assert isinstance(maximum, (int, float))
+    assert isinstance(minimum, (int, float))
     assert minimum < nominal < maximum
 
 
