@@ -13,12 +13,12 @@ import yaml
 
 try:
     from src.reporter import export_outputs as _export_outputs  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
+except ImportError:  # pragma: no cover - optional dependency
     _export_outputs = None
 
 try:
     from src.validators import run_sanity_checks as _run_sanity_checks  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
+except ImportError:  # pragma: no cover - optional dependency
     _run_sanity_checks = None
 
 
@@ -168,7 +168,7 @@ def _load_kpi_dashboard(path: Path | None = None) -> dict:
 
     try:
         data = json.loads(dashboard_path.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         return {}
 
     return data if isinstance(data, dict) else {}
@@ -469,7 +469,7 @@ def _write_metric_markdown_files(
 def _generate_pdf(html_content: str, output_path: Path) -> None:
     try:
         from fpdf import FPDF
-    except Exception as exc:  # pragma: no cover - optional dependency
+    except ImportError as exc:  # pragma: no cover - optional dependency
         raise RuntimeError("PDF generation requested but fpdf2 is not installed") from exc
 
     text_content = re.sub(r"<[^>]+>", " ", html_content)

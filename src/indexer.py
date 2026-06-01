@@ -20,7 +20,7 @@ def _load_manifest_version() -> str:
 
     try:
         data = yaml.safe_load(MANIFEST_PATH.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, yaml.YAMLError):
         return "unknown"
 
     if not isinstance(data, dict):
@@ -36,7 +36,7 @@ def _load_manifest_version() -> str:
 def _safe_relative(path: Path) -> str | None:
     try:
         return str(path.resolve().relative_to(ROOT.resolve()))
-    except Exception:
+    except (ValueError, OSError):
         return None
 
 
@@ -107,7 +107,7 @@ def main() -> None:
     try:
         records = _collect_records()
         _write_outputs(records)
-    except Exception:
+    except (OSError, ValueError, TypeError, json.JSONDecodeError, yaml.YAMLError):
         DOCS_DIR.mkdir(parents=True, exist_ok=True)
         (DOCS_DIR / "index.json").write_text("[]\n", encoding="utf-8")
         (DOCS_DIR / "index.yaml").write_text(

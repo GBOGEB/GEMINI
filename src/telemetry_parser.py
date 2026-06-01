@@ -23,7 +23,7 @@ def _load_yaml(path: Path) -> dict:
 
     try:
         content = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, yaml.YAMLError):
         return {}
 
     return content if isinstance(content, dict) else {}
@@ -35,7 +35,7 @@ def _load_json(path: Path) -> dict:
 
     try:
         content = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         return {}
 
     return content if isinstance(content, dict) else {}
@@ -88,7 +88,7 @@ def _load_pipeline_runtime_seconds() -> float:
 
     try:
         return _safe_float(PIPELINE_RUNTIME_PATH.read_text(encoding="utf-8").strip())
-    except Exception:
+    except OSError:
         return 0.0
 
 
@@ -164,7 +164,7 @@ def main() -> None:
 
     try:
         dashboard = build_kpi_dashboard()
-    except Exception:
+    except (OSError, ValueError, TypeError, json.JSONDecodeError, yaml.YAMLError):
         dashboard = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "execution_velocity": {
