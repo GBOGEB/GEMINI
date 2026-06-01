@@ -10,6 +10,15 @@ from pathlib import Path
 import numpy as np
 import plotly.graph_objects as go
 
+# Standardized dashboard palette (Tailwind Cyan / Emerald / Rose / Slate)
+COLORS = {
+    "primary": "#06b6d4",               # Cyan 500
+    "success": "#10b981",               # Emerald 500
+    "danger": "#f43f5e",                # Rose 500
+    "text": "#64748b",                  # Slate 500
+    "grid": "rgba(100, 116, 139, 0.2)",
+}
+
 ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = ROOT / "docs"
 PYTEST_TELEMETRY_PATH = DOCS_DIR / "pytest_telemetry.json"
@@ -271,23 +280,41 @@ def calculate_explicit_pca(telemetry_matrix: np.ndarray) -> dict:
     }
 
 
+def _transparent_layout(title: str, is_empty: bool = False) -> dict:
+    """SSOT transparent layout for seamless light/dark mode switching."""
+    layout: dict = {
+        "title": {"text": title, "font": {"color": COLORS["text"]}},
+        "paper_bgcolor": "rgba(0,0,0,0)",
+        "plot_bgcolor": "rgba(0,0,0,0)",
+        "font": {"color": COLORS["text"]},
+        "xaxis": {"gridcolor": COLORS["grid"], "zerolinecolor": COLORS["grid"]},
+        "yaxis": {"gridcolor": COLORS["grid"], "zerolinecolor": COLORS["grid"]},
+        "margin": {"l": 40, "r": 40, "t": 60, "b": 40},
+    }
+    if is_empty:
+        layout.update(
+            {
+                "xaxis": {"visible": False},
+                "yaxis": {"visible": False},
+                "annotations": [
+                    {
+                        "text": "No telemetry data available for this context",
+                        "showarrow": False,
+                        "xref": "paper",
+                        "yref": "paper",
+                        "x": 0.5,
+                        "y": 0.5,
+                        "font": {"color": COLORS["text"]},
+                    }
+                ],
+            }
+        )
+    return layout
+
+
 def _empty_figure_payload(title: str) -> dict:
     figure = go.Figure()
-    figure.update_layout(
-        title=title,
-        xaxis={"visible": False},
-        yaxis={"visible": False},
-        annotations=[
-            {
-                "text": "No telemetry data available",
-                "showarrow": False,
-                "xref": "paper",
-                "yref": "paper",
-                "x": 0.5,
-                "y": 0.5,
-            }
-        ],
-    )
+    figure.update_layout(**_transparent_layout(title, is_empty=True))
     return json.loads(figure.to_json())
 
 
@@ -306,8 +333,15 @@ def generate_plotly_json(telemetry_data: dict, pca_data: dict) -> dict:
         passed_counts.append(int(run.get("passed", 0) or 0))
         failed_counts.append(int(run.get("failed", 0) or 0))
 
+    # --- EXECUTIVE VIEW: Telemetry combo (health + duration) ---
     if telemetry_labels:
         telemetry_figure = go.Figure()
+        telemetry_figure.add_trace(
+            go.Bar(x=telemetry_labels, y=passed_counts, name="Passed", marker_color=COLORS["success"])
+        )
+        telemetry_figure.add_trace(
+            go.Bar(x=telemetry_labels, y=failed_counts, name="Failed", marker_color=COLORS["danger"])
+        )
         telemetry_figure.add_trace(
             go.Scatter(
                 x=telemetry_labels,
@@ -315,22 +349,43 @@ def generate_plotly_json(telemetry_data: dict, pca_data: dict) -> dict:
                 mode="lines+markers",
                 name="Execution Time (s)",
                 yaxis="y2",
+                line={"color": COLORS["primary"], "width": 3},
             )
         )
-        telemetry_figure.add_trace(go.Bar(x=telemetry_labels, y=passed_counts, name="Passed"))
-        telemetry_figure.add_trace(go.Bar(x=telemetry_labels, y=failed_counts, name="Failed"))
-        telemetry_figure.update_layout(
-            title="Test Execution Time vs Passed/Failed Counts",
-            barmode="group",
-            xaxis_title="Run",
-            yaxis_title="Test Count",
-            yaxis2={"title": "Execution Time (s)", "overlaying": "y", "side": "right"},
-            legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "left", "x": 0},
+
+        density_menus = [
+            {
+                "type": "buttons",
+                "direction": "right",
+                "x": 1.0,
+                "y": 1.15,
+                "buttons": [
+                    {"label": "Grouped", "method": "relayout", "args": [{"barmode": "group"}]},
+                    {"label": "Stacked", "method": "relayout", "args": [{"barmode": "stack"}]},
+                ],
+            }
+        ]
+
+        layout = _transparent_layout("Execution Health & Duration")
+        layout.update(
+            {
+                "barmode": "group",
+                "updatemenus": density_menus,
+                "yaxis2": {
+                    "title": "Time (s)",
+                    "overlaying": "y",
+                    "side": "right",
+                    "gridcolor": COLORS["grid"],
+                },
+                "legend": {"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "left", "x": 0},
+            }
         )
+        telemetry_figure.update_layout(**layout)
         telemetry_payload = json.loads(telemetry_figure.to_json())
     else:
-        telemetry_payload = _empty_figure_payload("Test Execution Time vs Passed/Failed Counts")
+        telemetry_payload = _empty_figure_payload("Execution Health & Duration")
 
+    # --- ENGINEERING VIEW: PCA bottleneck contribution ---
     pca_payload = _empty_figure_payload("PCA Bottleneck Contribution (PC1)")
     if isinstance(pca_data, dict):
         variable_names = pca_data.get("variable_names", [])
@@ -355,21 +410,19 @@ def generate_plotly_json(telemetry_data: dict, pca_data: dict) -> dict:
                         x=[name for name, _ in bottleneck_scores],
                         y=[score for _, score in bottleneck_scores],
                         name="|PC1 loading|",
+                        marker_color=COLORS["primary"],
                     )
                 ]
             )
-            pca_figure.update_layout(
-                title="PCA Bottleneck Contribution (PC1)",
-                xaxis_title="Variable",
-                yaxis_title="Absolute Loading",
-            )
+            pca_figure.update_layout(**_transparent_layout("PCA Bottleneck Contribution (PC1)"))
             pca_payload = json.loads(pca_figure.to_json())
 
+    # Payload structured by audience intent
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "charts": {
-            "telemetry_combo": telemetry_payload,
-            "pca_bottlenecks": pca_payload,
+        "audience": {
+            "executive": {"telemetry_combo": telemetry_payload},
+            "engineering": {"pca_bottlenecks": pca_payload},
         },
     }
 
