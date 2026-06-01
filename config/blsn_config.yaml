@@ -25,3 +25,10 @@ system_parameters:
   cold_box:
     thermal_load_kw_max: 32
     standby_thermal_load_kw_min: 4
+
+telemetry:
+  tuple_execution_targets:
+    ci_total_runtime_s: [120, 180, 240]
+    pytest_runtime_s: [15, 25, 35]
+    pipeline_runtime_s: [5, 10, 15]
+    yaml_json_lint_runtime_s: [3, 6, 9]
