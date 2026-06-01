@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
+import plotly.graph_objects as go
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = ROOT / "docs"
@@ -15,6 +16,8 @@ PYTEST_TELEMETRY_PATH = DOCS_DIR / "pytest_telemetry.json"
 LEDGER_PATH = DOCS_DIR / "historical_telemetry_ledger.json"
 DOE_MATRIX_PATH = DOCS_DIR / "experimental_design_matrix.json"
 KPI_DASHBOARD_PATH = DOCS_DIR / "kpi_dashboard.json"
+VISUALS_DIR = DOCS_DIR / "visuals"
+PLOTLY_PAYLOAD_PATH = VISUALS_DIR / "plotly_payloads.json"
 
 
 def _load_json(path: Path, default: dict) -> dict:
@@ -268,6 +271,109 @@ def calculate_explicit_pca(telemetry_matrix: np.ndarray) -> dict:
     }
 
 
+def _empty_figure_payload(title: str) -> dict:
+    figure = go.Figure()
+    figure.update_layout(
+        title=title,
+        xaxis={"visible": False},
+        yaxis={"visible": False},
+        annotations=[
+            {
+                "text": "No telemetry data available",
+                "showarrow": False,
+                "xref": "paper",
+                "yref": "paper",
+                "x": 0.5,
+                "y": 0.5,
+            }
+        ],
+    )
+    return json.loads(figure.to_json())
+
+
+def generate_plotly_json(telemetry_data: dict, pca_data: dict) -> dict:
+    runs = telemetry_data.get("runs", []) if isinstance(telemetry_data, dict) else []
+    runs = [run for run in runs if isinstance(run, dict)]
+
+    telemetry_labels: list[str] = []
+    runtime_seconds: list[float] = []
+    passed_counts: list[int] = []
+    failed_counts: list[int] = []
+
+    for run in runs:
+        telemetry_labels.append(str(run.get("captured_at") or run.get("run_id") or f"run-{len(telemetry_labels) + 1}"))
+        runtime_seconds.append(float(run.get("runtime_seconds", 0.0) or 0.0))
+        passed_counts.append(int(run.get("passed", 0) or 0))
+        failed_counts.append(int(run.get("failed", 0) or 0))
+
+    if telemetry_labels:
+        telemetry_figure = go.Figure()
+        telemetry_figure.add_trace(
+            go.Scatter(
+                x=telemetry_labels,
+                y=runtime_seconds,
+                mode="lines+markers",
+                name="Execution Time (s)",
+                yaxis="y2",
+            )
+        )
+        telemetry_figure.add_trace(go.Bar(x=telemetry_labels, y=passed_counts, name="Passed"))
+        telemetry_figure.add_trace(go.Bar(x=telemetry_labels, y=failed_counts, name="Failed"))
+        telemetry_figure.update_layout(
+            title="Test Execution Time vs Passed/Failed Counts",
+            barmode="group",
+            xaxis_title="Run",
+            yaxis_title="Test Count",
+            yaxis2={"title": "Execution Time (s)", "overlaying": "y", "side": "right"},
+            legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "left", "x": 0},
+        )
+        telemetry_payload = json.loads(telemetry_figure.to_json())
+    else:
+        telemetry_payload = _empty_figure_payload("Test Execution Time vs Passed/Failed Counts")
+
+    pca_payload = _empty_figure_payload("PCA Bottleneck Contribution (PC1)")
+    if isinstance(pca_data, dict):
+        variable_names = pca_data.get("variable_names", [])
+        eigenmatrix = pca_data.get("eigenmatrix", [])
+        variable_names = [str(name) for name in variable_names] if isinstance(variable_names, list) else []
+        eigenmatrix = eigenmatrix if isinstance(eigenmatrix, list) else []
+
+        bottleneck_scores: list[tuple[str, float]] = []
+        for variable_index, variable_name in enumerate(variable_names):
+            if variable_index >= len(eigenmatrix):
+                continue
+            vector = eigenmatrix[variable_index]
+            if not isinstance(vector, list) or not vector:
+                continue
+            bottleneck_scores.append((variable_name, abs(float(vector[0] or 0.0))))
+
+        if bottleneck_scores:
+            bottleneck_scores.sort(key=lambda item: item[1], reverse=True)
+            pca_figure = go.Figure(
+                data=[
+                    go.Bar(
+                        x=[name for name, _ in bottleneck_scores],
+                        y=[score for _, score in bottleneck_scores],
+                        name="|PC1 loading|",
+                    )
+                ]
+            )
+            pca_figure.update_layout(
+                title="PCA Bottleneck Contribution (PC1)",
+                xaxis_title="Variable",
+                yaxis_title="Absolute Loading",
+            )
+            pca_payload = json.loads(pca_figure.to_json())
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "charts": {
+            "telemetry_combo": telemetry_payload,
+            "pca_bottlenecks": pca_payload,
+        },
+    }
+
+
 def main() -> None:
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -297,6 +403,10 @@ def main() -> None:
     kpi_dashboard = _load_json(KPI_DASHBOARD_PATH, default={})
     kpi_dashboard["pca_mathematical_proof"] = pca_proof
     KPI_DASHBOARD_PATH.write_text(json.dumps(kpi_dashboard, indent=2), encoding="utf-8")
+
+    VISUALS_DIR.mkdir(parents=True, exist_ok=True)
+    plotly_payloads = generate_plotly_json(updated_ledger, pca_proof)
+    PLOTLY_PAYLOAD_PATH.write_text(json.dumps(plotly_payloads, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":
