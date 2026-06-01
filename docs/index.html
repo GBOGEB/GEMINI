@@ -342,11 +342,11 @@
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:0.75rem;padding:1rem">
         <div class="mermaid">
           graph LR;
-            SSOT[SSOT Config] --&gt; PIPELINE[Pipeline Execution];
-            PIPELINE --&gt; MARKDOWN[Markdown Slug Pages];
-            PIPELINE --&gt; INDEX[Index HTML];
-            PIPELINE --&gt; SLIDES[Slides HTML];
-            INDEX --&gt; PDF[PDF Export];
+            SSOT[SSOT Config] --> PIPELINE[Pipeline Execution];
+            PIPELINE --> MARKDOWN[Markdown Slug Pages];
+            PIPELINE --> INDEX[Index HTML];
+            PIPELINE --> SLIDES[Slides HTML];
+            INDEX --> PDF[PDF Export];
         </div>
       </div>
     </section>

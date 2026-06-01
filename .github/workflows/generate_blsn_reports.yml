@@ -15,6 +15,7 @@ jobs:
   full-matrix-validation:
     name: Run (${{ matrix.os }} - Py ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.telemetry == true }}
     strategy:
       fail-fast: false
       matrix:
@@ -25,10 +26,13 @@ jobs:
             python-version: "3.12"
           - os: ubuntu-latest
             python-version: "pypy-3.9"
+            telemetry: true
           - os: ubuntu-latest
             python-version: "3.13-dev"
+            telemetry: true
           - os: ubuntu-latest
             python-version: "3.14-dev"
+            telemetry: true
 
     steps:
       - name: Checkout Repository Source
@@ -42,7 +46,7 @@ jobs:
       - name: Install Core & Test Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-json-report ruff yamllint pyyaml matplotlib fpdf2 plotly pandas
+          pip install pytest pytest-json-report ruff yamllint pyyaml fpdf2 plotly pandas
 
       - name: Data Substrate Linting (YAML & JSON)
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
