@@ -174,6 +174,18 @@ def _load_kpi_dashboard(path: Path | None = None) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def _load_json_data(path: Path) -> dict:
+    if not path.exists():
+        return {}
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+    return data if isinstance(data, dict) else {}
+
+
 def slugify(value: str) -> str:
     normalized = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower())
     normalized = re.sub(r"-{2,}", "-", normalized).strip("-")
@@ -233,6 +245,8 @@ def generate_html_report(
     publishing: dict[str, str | bool] | None = None,
     metric_pages: list[tuple[str, str, str]] | None = None,
     kpi_dashboard: dict | None = None,
+    historical_ledger: dict | None = None,
+    doe_matrix: dict | None = None,
 ) -> str:
     presentation = presentation_layer or {"enable_lipstick": False, "css_framework_cdn": "", "theme": "light"}
     publishing_cfg = publishing or {"base_url": "", "generate_pdf": False, "generate_slides": False}
@@ -293,6 +307,62 @@ def generate_html_report(
     pass_ratio = float(ratios.get("pass_ratio", 0.0) or 0.0)
     fail_ratio = float(ratios.get("fail_ratio", 0.0) or 0.0)
     skip_ratio = float(ratios.get("skip_ratio", 0.0) or 0.0)
+    ledger = historical_ledger if isinstance(historical_ledger, dict) else {}
+    ledger_meta = ledger.get("meta", {})
+    ledger_meta = ledger_meta if isinstance(ledger_meta, dict) else {}
+    total_runs = int(ledger_meta.get("total_attempts", 0) or 0)
+    success_rate = float(ledger_meta.get("success_rate", 0.0) or 0.0)
+    latest_deltas = ledger_meta.get("latest_deltas", {})
+    latest_deltas = latest_deltas if isinstance(latest_deltas, dict) else {}
+    previous_runtime = float(latest_deltas.get("previous_runtime_moving_avg", 0.0) or 0.0)
+
+    doe = doe_matrix if isinstance(doe_matrix, dict) else {}
+    factor_map = doe.get("factor_map", {})
+    factor_map = factor_map if isinstance(factor_map, dict) else {}
+    factor_a = escape(str(factor_map.get("A", "python_version")))
+    factor_b = escape(str(factor_map.get("B", "os_type")))
+    factor_c = escape(str(factor_map.get("C", "load_parameter")))
+
+    pca_proof = kpi.get("pca_mathematical_proof", {})
+    pca_proof = pca_proof if isinstance(pca_proof, dict) else {}
+    pca_eigenvalues = pca_proof.get("eigenvalues", [])
+    pca_eigenvalues = pca_eigenvalues if isinstance(pca_eigenvalues, list) else []
+    pca_eigenmatrix = pca_proof.get("eigenmatrix", [])
+    pca_eigenmatrix = pca_eigenmatrix if isinstance(pca_eigenmatrix, list) else []
+    pca_variance = pca_proof.get("explained_variance_ratio", [])
+    pca_variance = pca_variance if isinstance(pca_variance, list) else []
+    pca_variables = pca_proof.get("variable_names", [])
+    pca_variables = (
+        [str(variable) for variable in pca_variables]
+        if isinstance(pca_variables, list) and pca_variables
+        else ["runtime_seconds", "pass_rate", "fail_rate", "skip_rate", "total_tests"]
+    )
+
+    pca_rows: list[str] = []
+    top_components = min(2, len(pca_eigenvalues))
+    for component_index in range(top_components):
+        eigenvalue = float(pca_eigenvalues[component_index] or 0.0)
+        variance_ratio = float(pca_variance[component_index] or 0.0) if component_index < len(pca_variance) else 0.0
+        weights = []
+        for variable_index, variable_name in enumerate(pca_variables):
+            if variable_index < len(pca_eigenmatrix):
+                row_values = pca_eigenmatrix[variable_index]
+                if isinstance(row_values, list) and component_index < len(row_values):
+                    weights.append((variable_name, abs(float(row_values[component_index] or 0.0))))
+        strongest_variable = max(weights, key=lambda item: item[1])[0] if weights else "N/A"
+        pca_rows.append(
+            "<tr class=\"border-b border-slate-200 last:border-none\">"
+            f"<td class=\"px-4 py-3 text-sm text-slate-800\">PC{component_index + 1}</td>"
+            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{eigenvalue:.6f}</td>"
+            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{variance_ratio:.2%}</td>"
+            f"<td class=\"px-4 py-3 text-sm text-slate-700\">{escape(str(strongest_variable))}</td>"
+            "</tr>"
+        )
+    pca_rows_html = (
+        "\n".join(pca_rows)
+        if pca_rows
+        else '<tr><td colspan="4" class="px-4 py-3 text-sm text-slate-500">No PCA proof data available.</td></tr>'
+    )
 
     return f"""
 <!DOCTYPE html>
@@ -380,6 +450,36 @@ def generate_html_report(
           <p class=\"mt-1 text-sm text-slate-800\">Pass: <strong>{pass_ratio:.2%}</strong> | Fail: <strong>{fail_ratio:.2%}</strong> | Skip: <strong>{skip_ratio:.2%}</strong></p>
         </div>
       </div>
+    </section>
+
+    <section class=\"mb-8 rounded-2xl border border-violet-200 bg-white p-6 shadow-sm\">
+      <h2 class=\"text-xl font-semibold text-slate-900\">Wave 12: SPC &amp; Telemetry Stats</h2>
+      <div class=\"mt-4 grid gap-4 md:grid-cols-2\">
+        <div class=\"rounded-xl border border-slate-200 bg-slate-50 p-4\">
+          <p class=\"text-xs uppercase tracking-wide text-slate-500\">Runtime Drift</p>
+          <p class=\"mt-1 text-sm text-slate-800\">Current Runtime: <strong>{total_runtime:.4f}s</strong></p>
+          <p class=\"text-sm text-slate-700\">Previous Moving Average: <strong>{previous_runtime:.4f}s</strong></p>
+        </div>
+        <div class=\"rounded-xl border border-slate-200 bg-slate-50 p-4\">
+          <p class=\"text-xs uppercase tracking-wide text-slate-500\">Historical Control</p>
+          <p class=\"mt-1 text-sm text-slate-800\">Total Accumulated Runs: <strong>{total_runs}</strong></p>
+          <p class=\"text-sm text-slate-700\">Success Rate: <strong>{success_rate:.2%}</strong></p>
+        </div>
+      </div>
+      <p class=\"mt-4 text-sm text-slate-700\">DoE Factors - A: <strong>{factor_a}</strong>, B: <strong>{factor_b}</strong>, C: <strong>{factor_c}</strong></p>
+      <table class=\"mt-4 w-full overflow-hidden rounded-xl border border-slate-200 bg-white\">
+        <thead>
+          <tr class=\"bg-slate-100 text-left\">
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Principal Component</th>
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Eigenvalue</th>
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Explained Variance</th>
+            <th class=\"px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600\">Highest Weight Variable</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pca_rows_html}
+        </tbody>
+      </table>
     </section>
 
     <section class=\"rounded-2xl border border-indigo-200 bg-gradient-to-br from-white to-indigo-50 p-6 shadow-sm\">
@@ -505,6 +605,8 @@ def main() -> None:
 
     metric_pages = _write_metric_markdown_files(telemetry_tuples, OUTPUT_DIR)
     kpi_dashboard = _load_kpi_dashboard()
+    historical_ledger = _load_json_data(OUTPUT_DIR / "historical_telemetry_ledger.json")
+    doe_matrix = _load_json_data(OUTPUT_DIR / "experimental_design_matrix.json")
 
     report_html = generate_html_report(
         params,
@@ -514,6 +616,8 @@ def main() -> None:
         publishing,
         metric_pages,
         kpi_dashboard,
+        historical_ledger,
+        doe_matrix,
     )
     (OUTPUT_DIR / "index.html").write_text(report_html, encoding="utf-8")
 

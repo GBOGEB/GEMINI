@@ -7,11 +7,14 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+import numpy as np
+
 ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = ROOT / "docs"
 PYTEST_TELEMETRY_PATH = DOCS_DIR / "pytest_telemetry.json"
 LEDGER_PATH = DOCS_DIR / "historical_telemetry_ledger.json"
 DOE_MATRIX_PATH = DOCS_DIR / "experimental_design_matrix.json"
+KPI_DASHBOARD_PATH = DOCS_DIR / "kpi_dashboard.json"
 
 
 def _load_json(path: Path, default: dict) -> dict:
@@ -210,6 +213,61 @@ def generate_doe_matrix(runs: list[dict]) -> dict:
     }
 
 
+def _build_telemetry_matrix(runs: list[dict]) -> tuple[np.ndarray, list[str]]:
+    variable_names = ["runtime_seconds", "pass_rate", "fail_rate", "skip_rate", "total_tests"]
+    rows: list[list[float]] = []
+    for run in runs:
+        rows.append(
+            [
+                float(run.get("runtime_seconds", 0.0)),
+                float(run.get("pass_rate", 0.0)),
+                float(run.get("fail_rate", 0.0)),
+                float(run.get("skip_rate", 0.0)),
+                float(run.get("total_tests", 0.0)),
+            ]
+        )
+
+    if not rows:
+        rows = [[0.0 for _ in variable_names]]
+
+    return np.array(rows, dtype=float), variable_names
+
+
+def calculate_explicit_pca(telemetry_matrix: np.ndarray) -> dict:
+    matrix = np.asarray(telemetry_matrix, dtype=float)
+    if matrix.ndim != 2:
+        raise ValueError("telemetry_matrix must be a 2D array")
+
+    if matrix.shape[0] < 2:
+        matrix = np.vstack([matrix, matrix])
+
+    centered = matrix - np.mean(matrix, axis=0, keepdims=True)
+    covariance_matrix = np.cov(centered, rowvar=False)
+
+    if np.ndim(covariance_matrix) == 0:
+        covariance_matrix = np.array([[float(covariance_matrix)]], dtype=float)
+    elif np.ndim(covariance_matrix) == 1:
+        covariance_matrix = np.diag(covariance_matrix.astype(float))
+
+    eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
+    sort_indices = np.argsort(eigenvalues)[::-1]
+    sorted_eigenvalues = eigenvalues[sort_indices]
+    sorted_eigenvectors = eigenvectors[:, sort_indices]
+
+    total_eigenvalue = float(np.sum(sorted_eigenvalues))
+    if total_eigenvalue <= 0:
+        explained_variance_ratio = np.zeros_like(sorted_eigenvalues)
+    else:
+        explained_variance_ratio = sorted_eigenvalues / total_eigenvalue
+
+    return {
+        "covariance_matrix": covariance_matrix.tolist(),
+        "eigenvalues": sorted_eigenvalues.tolist(),
+        "eigenmatrix": sorted_eigenvectors.tolist(),
+        "explained_variance_ratio": explained_variance_ratio.tolist(),
+    }
+
+
 def main() -> None:
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -228,8 +286,17 @@ def main() -> None:
     doe_matrix["latest_deltas"] = deltas
     doe_matrix["current_run"] = current_run
 
+    telemetry_matrix, variable_names = _build_telemetry_matrix(updated_ledger.get("runs", []))
+    pca_proof = calculate_explicit_pca(telemetry_matrix)
+    pca_proof["variable_names"] = variable_names
+    doe_matrix["pca_variable_names"] = variable_names
+
     LEDGER_PATH.write_text(json.dumps(updated_ledger, indent=2), encoding="utf-8")
     DOE_MATRIX_PATH.write_text(json.dumps(doe_matrix, indent=2), encoding="utf-8")
+
+    kpi_dashboard = _load_json(KPI_DASHBOARD_PATH, default={})
+    kpi_dashboard["pca_mathematical_proof"] = pca_proof
+    KPI_DASHBOARD_PATH.write_text(json.dumps(kpi_dashboard, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":
