@@ -1,0 +1,21 @@
+---
+version: "1.0.0"
+dmaic:
+  define:
+    objective: "Maintain local-first governance consistency."
+  measure:
+    metrics:
+      - "index_manifest_coverage"
+      - "unresolved_conflict_count"
+  analyze:
+    inputs:
+      - "docs/governance/glossary_conflicts.yaml"
+      - "docs/governance/trace.yaml"
+  improve:
+    actions:
+      - "Update alias mappings for recurring collisions."
+      - "Refine stitch precedence for ambiguous terms."
+  control:
+    controls:
+      - "Require handover lineage fields."
+      - "Block global merge on unresolved conflict policy."

@@ -1,0 +1,15 @@
+---
+version: "1.0.0"
+lineage:
+  source: "https://github.com/GBOGEB/GEMINI/pull/5"
+  generated_from: "governance bootstrap request"
+artifact_handover:
+  package_root: "docs/governance"
+  canonical_artifacts:
+    - "docs/governance/glossary.yaml"
+    - "docs/governance/global_stitch_config.yaml"
+    - "docs/governance/index.json"
+    - "docs/governance/manifest.yaml"
+  validation_expectations:
+    - "index and manifest include all governance artifacts"
+    - "trace documents PR origin"

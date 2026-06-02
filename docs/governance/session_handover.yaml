@@ -1,0 +1,10 @@
+---
+version: "1.0.0"
+lineage:
+  source: "https://github.com/GBOGEB/GEMINI/pull/5"
+  generated_from: "governance bootstrap request"
+session_handover:
+  summary: "Established local-first SPINE/Federation governance bootstrap artifacts."
+  next_actions:
+    - "Review glossary ownership and role assignments."
+    - "Integrate federation stitching consumers as needed."

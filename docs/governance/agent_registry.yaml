@@ -1,0 +1,15 @@
+---
+version: "1.0.0"
+agents:
+  - role: "maintainer"
+    responsibilities:
+      - "Approve glossary changes"
+      - "Enforce local SSOT boundaries"
+  - role: "federation_bridge"
+    responsibilities:
+      - "Read local index artifacts"
+      - "Publish stitched metadata views"
+  - role: "automation_reviewer"
+    responsibilities:
+      - "Validate manifest and index completeness"
+      - "Report unresolved conflicts"

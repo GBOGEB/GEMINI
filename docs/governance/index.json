@@ -1,0 +1,66 @@
+{
+  "version": "1.0.0",
+  "generated_by": "repository governance bootstrap",
+  "artifacts": [
+    {
+      "path": "docs/governance/glossary.yaml",
+      "kind": "governance_glossary"
+    },
+    {
+      "path": "docs/governance/glossary_conflicts.yaml",
+      "kind": "conflict_registry"
+    },
+    {
+      "path": "docs/governance/glossary_aliases.yaml",
+      "kind": "alias_registry"
+    },
+    {
+      "path": "docs/governance/global_stitch_config.yaml",
+      "kind": "stitch_configuration"
+    },
+    {
+      "path": "docs/governance/index.yaml",
+      "kind": "human_index"
+    },
+    {
+      "path": "docs/governance/index.json",
+      "kind": "machine_index"
+    },
+    {
+      "path": "docs/governance/manifest.yaml",
+      "kind": "artifact_manifest"
+    },
+    {
+      "path": "docs/governance/trace.yaml",
+      "kind": "traceability_log"
+    },
+    {
+      "path": "docs/governance/agent_registry.yaml",
+      "kind": "agent_registry"
+    },
+    {
+      "path": "docs/governance/spine_contract.yaml",
+      "kind": "spine_contract"
+    },
+    {
+      "path": "docs/governance/dmaic.yaml",
+      "kind": "continuous_improvement_loop"
+    },
+    {
+      "path": "docs/governance/architecture.md",
+      "kind": "architecture_document"
+    },
+    {
+      "path": "docs/governance/architecture.mmd",
+      "kind": "architecture_mermaid"
+    },
+    {
+      "path": "docs/governance/session_handover.yaml",
+      "kind": "session_handover"
+    },
+    {
+      "path": "docs/governance/artifact_handover.yaml",
+      "kind": "artifact_handover"
+    }
+  ]
+}

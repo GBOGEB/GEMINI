@@ -1,0 +1,21 @@
+---
+version: "1.0.0"
+scope: "GBOGEB/GEMINI"
+authority: "local_ssot"
+description: "Repository-local governance glossary. This file is authoritative for GEMINI."
+terms:
+  - id: SPINE
+    definition: "A local-first governance framework for structuring repository rules and roles."
+    stewardship: "repository"
+  - id: FEDERATION
+    definition: "Cross-repository coordination model that composes local artifacts without overriding them."
+    stewardship: "repository"
+  - id: LOCAL_SSOT
+    definition: "The local single source of truth for terminology and governance decisions in this repository."
+    stewardship: "repository"
+  - id: GLOBAL_STITCHING
+    definition: "An index-driven process that aggregates local governance views across repositories."
+    stewardship: "federation"
+  - id: DYAD-000017
+    definition: "Conflict-resolution precedence for glossary stitching collisions."
+    stewardship: "federation"

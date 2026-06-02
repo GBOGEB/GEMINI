@@ -1,0 +1,10 @@
+---
+version: "1.0.0"
+contract:
+  principles:
+    - "Local glossary is authoritative for local terms."
+    - "Federated stitching composes local views and does not overwrite local authority."
+    - "Conflicts must be explicit, traceable, and gate global merge when unresolved."
+  guarantees:
+    - "Every governance artifact is declared in manifest and index artifacts."
+    - "Handover artifacts carry explicit lineage."

@@ -1,0 +1,10 @@
+---
+version: "1.0.0"
+origin:
+  repository: "GBOGEB/GEMINI"
+  pull_request: "https://github.com/GBOGEB/GEMINI/pull/5"
+  branch: "feature/spine-governance-bootstrap"
+traceability:
+  source_of_truth: "docs/governance/glossary.yaml"
+  federation_stitch_config: "docs/governance/global_stitch_config.yaml"
+  package_manifest: "docs/governance/manifest.yaml"

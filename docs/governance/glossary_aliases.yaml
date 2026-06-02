@@ -1,0 +1,11 @@
+---
+version: "1.0.0"
+aliases:
+  - canonical: "LOCAL_SSOT"
+    aliases:
+      - "LOCAL_SSoT"
+      - "repo_local_ssot"
+  - canonical: "GLOBAL_STITCHING"
+    aliases:
+      - "federated_stitch"
+      - "global_index_merge"

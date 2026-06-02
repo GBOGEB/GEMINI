@@ -1,0 +1,17 @@
+---
+version: "1.0.0"
+conflict_records:
+  - conflict_id: "DYAD-000017"
+    term: "GLOBAL_STITCHING"
+    local_definition_ref: "docs/governance/glossary.yaml#GLOBAL_STITCHING"
+    foreign_definition_ref: "federated/index/*"
+    status: "guarded"
+    resolution_policy:
+      order:
+        - local_scope_wins
+        - explicit_alias_mapping
+        - lineage_recency
+        - surface_collision_flag
+      on_unresolved:
+        action: "emit_glossary_conflict_record"
+        block_global_merge: true

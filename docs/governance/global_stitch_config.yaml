@@ -1,0 +1,18 @@
+---
+version: "1.0.0"
+mode: "index_driven_federation"
+local_authority:
+  glossary: "docs/governance/glossary.yaml"
+  policy: "local_scope_wins"
+stitch_sources:
+  - "docs/governance/index.json"
+stitch_resolution_precedence:
+  dyad_id: "DYAD-000017"
+  order:
+    - local_scope_wins
+    - explicit_alias_mapping
+    - lineage_recency
+    - surface_collision_flag
+  on_unresolved:
+    action: "emit_glossary_conflict_record"
+    block_global_merge: true
