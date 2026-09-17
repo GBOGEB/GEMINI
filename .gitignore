@@ -16,6 +16,12 @@ env/
 # Jekyll build output
 _site/
 
+# Google/GitHub federated auth generated credentials
+gha-creds-*.json
+
+# Runtime Drive ingress receipts
+output/drive_ingress/
+
 # OS
 .DS_Store
 Thumbs.db
