@@ -1,0 +1,23 @@
+schema_version: 1
+receipt_type: drive_ingress
+session_id: GMI-DOCENG-20260917-001
+source_agent: Gemini
+consumer_agent: ChatGPT
+observed_at: 2026-09-17
+status: VERIFIED_CONNECTOR_READ
+source:
+  provider: google_drive
+  file_id: 1Suf0HhnozsCVXdvCzjeReQkOfinXY2m59paNQHrrQR4
+  title: "Please rework full recursive history and lineage f..."
+  revision_id: "ANLCKQn0dDVCzuq2TZKYqPrlviPHa8KC0GRaHmX7adL-gHU4kHS6kWo4FHheZvP-JveaCsC-aztRGb5GSebtm2eDKWidqLFVQz6fYsKrT3Y"
+  native_type: google_doc
+connector:
+  authenticated_read: true
+  raw_chat_required_for_read: false
+verification:
+  content_read: true
+  source_declared_claims_promoted_automatically: false
+  sha256: null
+  note: "Native Drive revision identity observed; no exported-byte SHA-256 computed in this receipt."
+current_gate: BASELINE_MATERIALIZATION_AND_PARITY_TESTING
+next_action: "Add manifest/schema validation and folder-level batch ingestion for GMI-* packages."
