@@ -139,17 +139,24 @@ def get_root_folder(folder_id: str, token: str) -> dict[str, Any]:
     try:
         raw = _request_json(url, token)
     except DriveIngressError as exc:
-        if exc.code in {"DRIVE_API_FORBIDDEN", "DRIVE_RESOURCE_NOT_FOUND"}:
+        if exc.code == "DRIVE_RESOURCE_NOT_FOUND":
             raise DriveIngressError(
                 "ROOT_INACCESSIBLE_OR_MISSING",
-                "Configured Drive root is missing or not readable by the WIF/service-account principal",
+                "Configured Drive root was not found; verify the folder ID and that the Google principal can see it",
             ) from exc
+        # Preserve 403 and other API classifications because Drive uses 403 for
+        # policy/quota/API conditions as well as permission failures.
         raise
 
     if str(raw.get("id", "")) != folder_id:
         raise DriveIngressError("ROOT_ID_MISMATCH", "Drive root response did not bind the requested folder ID")
     if raw.get("trashed") is True:
         raise DriveIngressError("ROOT_TRASHED", "Configured Drive root is trashed")
+    if raw.get("trashed") is not False:
+        raise DriveIngressError(
+            "ROOT_TRASHED_STATE_UNPROVEN",
+            "Drive root response did not explicitly prove trashed=false",
+        )
     if raw.get("mimeType") != FOLDER_MIME:
         raise DriveIngressError("ROOT_NOT_FOLDER", "Configured Drive root is not a folder")
     return raw
@@ -298,6 +305,11 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         root, items = census_tree(str(args.folder_id), str(args.token))
+        if not items:
+            raise DriveIngressError(
+                "CENSUS_ZERO_ITEMS",
+                "Drive root was readable but recursive enumeration returned zero items; IC3 requires a positive census",
+            )
         receipt = build_receipt(str(args.folder_id), items, root=root)
     except DriveIngressError as exc:
         write_status(
@@ -318,6 +330,7 @@ def main(argv: list[str] | None = None) -> int:
             "root_folder_id": str(args.folder_id),
             "root_verified": True,
             "census_sha256": receipt["census_sha256"],
+            "total_items": receipt["summary"]["total_items"],
             "file_count": receipt["summary"]["file_count"],
             "folder_count": receipt["summary"]["folder_count"],
         },
