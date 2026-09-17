@@ -1,0 +1,95 @@
+{
+  "context": {
+    "fileName": ["GEMINI.md"]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "sequential": true,
+        "hooks": [
+          {
+            "name": "bridge-session-context",
+            "type": "command",
+            "command": "python \"$GEMINI_PROJECT_DIR/.gemini/hooks/bridge_hook.py\"",
+            "timeout": 5000,
+            "description": "Inject governed Drive/GitHub bridge state at Gemini CLI session start."
+          }
+        ]
+      }
+    ],
+    "BeforeTool": [
+      {
+        "matcher": "read_file|write_file|replace|run_shell_command|mcp_.*",
+        "sequential": true,
+        "hooks": [
+          {
+            "name": "bridge-authority-guard",
+            "type": "command",
+            "command": "python \"$GEMINI_PROJECT_DIR/.gemini/hooks/bridge_hook.py\"",
+            "timeout": 5000,
+            "description": "Block credential reads/writes and direct governed-branch bypasses."
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "*",
+        "sequential": true,
+        "hooks": [
+          {
+            "name": "bridge-tool-receipt",
+            "type": "command",
+            "command": "python \"$GEMINI_PROJECT_DIR/.gemini/hooks/bridge_hook.py\"",
+            "timeout": 5000,
+            "description": "Write metadata-only tool receipts without persisting tool payloads."
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "matcher": "*",
+        "sequential": true,
+        "hooks": [
+          {
+            "name": "bridge-turn-checkpoint",
+            "type": "command",
+            "command": "python \"$GEMINI_PROJECT_DIR/.gemini/hooks/bridge_hook.py\"",
+            "timeout": 5000,
+            "description": "Persist hash-only turn checkpoints for cross-agent lineage."
+          }
+        ]
+      }
+    ],
+    "PreCompress": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "bridge-precompress-checkpoint",
+            "type": "command",
+            "command": "python \"$GEMINI_PROJECT_DIR/.gemini/hooks/bridge_hook.py\"",
+            "timeout": 5000,
+            "description": "Record a best-effort state checkpoint before context compression."
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "bridge-session-close",
+            "type": "command",
+            "command": "python \"$GEMINI_PROJECT_DIR/.gemini/hooks/bridge_hook.py\"",
+            "timeout": 5000,
+            "description": "Record a best-effort session close receipt."
+          }
+        ]
+      }
+    ]
+  }
+}
