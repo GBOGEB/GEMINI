@@ -42,6 +42,18 @@ def _item(
     )
 
 
+def _root(**overrides):
+    value = {
+        "id": "root",
+        "name": "GEMINI_QPS_HANDOVER",
+        "version": "4",
+        "mimeType": drive_ingress.FOLDER_MIME,
+        "trashed": False,
+    }
+    value.update(overrides)
+    return value
+
+
 def test_census_digest_is_deterministic() -> None:
     items = [
         _item("2", "B.md", "text/markdown", "GMI-001/B.md", sha256="abc"),
@@ -71,8 +83,7 @@ def test_receipt_separates_native_and_binary_files() -> None:
         _item("doc", "handover", "application/vnd.google-apps.document", "GMI-001/handover", version="8"),
         _item("md", "raw.md", "text/markdown", "GMI-001/raw.md", sha256="abc"),
     ]
-    root = {"id": "root", "name": "GEMINI_QPS_HANDOVER", "version": "4", "mimeType": drive_ingress.FOLDER_MIME, "trashed": False}
-    receipt = build_receipt("root", items, root=root)
+    receipt = build_receipt("root", items, root=_root())
     assert receipt["summary"] == {
         "total_items": 3,
         "folder_count": 1,
@@ -87,32 +98,43 @@ def test_receipt_separates_native_and_binary_files() -> None:
 
 
 def test_get_root_folder_rejects_non_folder(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        drive_ingress,
-        "_request_json",
-        lambda url, token: {"id": "root", "name": "not-folder", "mimeType": "text/plain", "trashed": False},
-    )
+    monkeypatch.setattr(drive_ingress, "_request_json", lambda url, token: _root(mimeType="text/plain"))
     with pytest.raises(DriveIngressError, match="not a folder") as exc:
         get_root_folder("root", "token")
     assert exc.value.code == "ROOT_NOT_FOLDER"
 
 
 def test_get_root_folder_rejects_trashed(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        drive_ingress,
-        "_request_json",
-        lambda url, token: {"id": "root", "name": "root", "mimeType": drive_ingress.FOLDER_MIME, "trashed": True},
-    )
+    monkeypatch.setattr(drive_ingress, "_request_json", lambda url, token: _root(trashed=True))
     with pytest.raises(DriveIngressError, match="trashed") as exc:
         get_root_folder("root", "token")
     assert exc.value.code == "ROOT_TRASHED"
 
 
-def test_root_forbidden_is_classified_as_inaccessible(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_root_folder_rejects_missing_trashed_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    raw = _root()
+    del raw["trashed"]
+    monkeypatch.setattr(drive_ingress, "_request_json", lambda url, token: raw)
+    with pytest.raises(DriveIngressError) as exc:
+        get_root_folder("root", "token")
+    assert exc.value.code == "ROOT_TRASHED_STATE_UNPROVEN"
+
+
+def test_root_forbidden_preserves_api_classification(monkeypatch: pytest.MonkeyPatch) -> None:
     def deny(url: str, token: str):
         raise DriveIngressError("DRIVE_API_FORBIDDEN", "forbidden")
 
     monkeypatch.setattr(drive_ingress, "_request_json", deny)
+    with pytest.raises(DriveIngressError) as exc:
+        get_root_folder("root", "token")
+    assert exc.value.code == "DRIVE_API_FORBIDDEN"
+
+
+def test_root_not_found_maps_to_root_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    def missing(url: str, token: str):
+        raise DriveIngressError("DRIVE_RESOURCE_NOT_FOUND", "not found")
+
+    monkeypatch.setattr(drive_ingress, "_request_json", missing)
     with pytest.raises(DriveIngressError) as exc:
         get_root_folder("root", "token")
     assert exc.value.code == "ROOT_INACCESSIBLE_OR_MISSING"
@@ -123,7 +145,7 @@ def test_census_verifies_root_before_children(monkeypatch: pytest.MonkeyPatch) -
 
     def fake_request(url: str, token: str):
         calls.append(url)
-        return {"id": "root", "name": "root", "mimeType": drive_ingress.FOLDER_MIME, "trashed": False, "version": "1"}
+        return _root(version="1")
 
     monkeypatch.setattr(drive_ingress, "_request_json", fake_request)
     monkeypatch.setattr(drive_ingress, "list_children", lambda folder_id, token: [])
@@ -131,3 +153,19 @@ def test_census_verifies_root_before_children(monkeypatch: pytest.MonkeyPatch) -
     assert root["id"] == "root"
     assert items == []
     assert calls and "/files/root?" in calls[0]
+
+
+def test_main_rejects_zero_item_census(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.setattr(drive_ingress, "census_tree", lambda folder_id, token: (_root(), []))
+    status = tmp_path / "status.json"
+    output = tmp_path / "census.json"
+    rc = drive_ingress.main([
+        "--folder-id", "root",
+        "--token", "token",
+        "--output", str(output),
+        "--status-output", str(status),
+    ])
+    assert rc == 3
+    payload = json.loads(status.read_text(encoding="utf-8"))
+    assert payload["classification"] == "CENSUS_ZERO_ITEMS"
+    assert not output.exists()
