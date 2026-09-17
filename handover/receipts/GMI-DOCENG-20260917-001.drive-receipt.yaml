@@ -4,7 +4,8 @@ session_id: GMI-DOCENG-20260917-001
 source_agent: Gemini
 consumer_agent: ChatGPT
 observed_at: 2026-09-17
-status: VERIFIED_CONNECTOR_READ
+status: VERIFIED
+event: CONNECTOR_READ
 source:
   provider: google_drive
   file_id: 1Suf0HhnozsCVXdvCzjeReQkOfinXY2m59paNQHrrQR4
@@ -20,4 +21,4 @@ verification:
   sha256: null
   note: "Native Drive revision identity observed; no exported-byte SHA-256 computed in this receipt."
 current_gate: BASELINE_MATERIALIZATION_AND_PARITY_TESTING
-next_action: "Add manifest/schema validation and folder-level batch ingestion for GMI-* packages."
+next_action: "Validate full GMI-* packages and reconcile with the GM-I-C Drive ingress proof."
