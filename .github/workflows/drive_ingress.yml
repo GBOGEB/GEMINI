@@ -1,0 +1,47 @@
+name: Google Drive Handover Ingress
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  drive-census:
+    name: Read-only Drive census
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Authenticate to Google Cloud with GitHub OIDC
+        id: google-auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DRIVE_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/drive.readonly
+          create_credentials_file: false
+
+      - name: Run deterministic Drive census
+        env:
+          GDRIVE_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+          GDRIVE_FOLDER_ID: 1FnbajqBiIjL6Y4-_7tE1D515fNWvHsu3
+        run: |
+          python src/drive_ingress.py \
+            --output output/drive_ingress/drive_census.json
+
+      - name: Validate receipt JSON
+        run: python -m json.tool output/drive_ingress/drive_census.json > /dev/null
+
+      - name: Upload ingress receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: drive-ingress-census
+          path: output/drive_ingress/drive_census.json
+          if-no-files-found: error
+          retention-days: 30
