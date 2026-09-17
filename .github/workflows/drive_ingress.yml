@@ -11,14 +11,38 @@ permissions:
 
 jobs:
   drive-census:
-    name: Read-only Drive census
+    name: IC3 read-only Drive census
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Preflight WIF configuration
+        id: config
+        continue-on-error: true
+        env:
+          WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          DRIVE_SERVICE_ACCOUNT: ${{ vars.GCP_DRIVE_SERVICE_ACCOUNT }}
+        run: |
+          mkdir -p output/drive_ingress
+          python - <<'PY'
+          import json, os, pathlib, sys
+          missing = [name for name, value in {
+              "GCP_WORKLOAD_IDENTITY_PROVIDER": os.environ.get("WIF_PROVIDER", ""),
+              "GCP_DRIVE_SERVICE_ACCOUNT": os.environ.get("DRIVE_SERVICE_ACCOUNT", ""),
+          }.items() if not value]
+          if missing:
+              pathlib.Path("output/drive_ingress/ic3_status.json").write_text(
+                  json.dumps({"result":"FAIL","classification":"CONFIG_MISSING","missing":missing}, indent=2) + "\n"
+              )
+              print("missing repository variables: " + ", ".join(missing), file=sys.stderr)
+              raise SystemExit(1)
+          PY
+
       - name: Authenticate to Google Cloud with GitHub OIDC
         id: google-auth
+        if: steps.config.outcome == 'success'
+        continue-on-error: true
         uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -27,21 +51,63 @@ jobs:
           access_token_scopes: https://www.googleapis.com/auth/drive.readonly
           create_credentials_file: false
 
+      - name: Classify OIDC/WIF authentication failure
+        if: steps.config.outcome == 'success' && steps.google-auth.outcome != 'success'
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          pathlib.Path("output/drive_ingress/ic3_status.json").write_text(
+              json.dumps({
+                  "result":"FAIL",
+                  "classification":"OIDC_WIF_AUTH_FAILED",
+                  "note":"GitHub OIDC to Google Workload Identity Federation did not mint a usable access token."
+              }, indent=2) + "\n"
+          )
+          PY
+
       - name: Run deterministic Drive census
+        id: census
+        if: steps.google-auth.outcome == 'success'
+        continue-on-error: true
         env:
           GDRIVE_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
           GDRIVE_FOLDER_ID: 1FnbajqBiIjL6Y4-_7tE1D515fNWvHsu3
         run: |
           python src/drive_ingress.py \
-            --output output/drive_ingress/drive_census.json
+            --output output/drive_ingress/drive_census.json \
+            --status-output output/drive_ingress/ic3_status.json
 
-      - name: Validate receipt JSON
-        run: python -m json.tool output/drive_ingress/drive_census.json > /dev/null
+      - name: Validate successful census receipt
+        if: steps.census.outcome == 'success'
+        run: |
+          python -m json.tool output/drive_ingress/drive_census.json > /dev/null
+          python - <<'PY'
+          import json
+          receipt = json.load(open("output/drive_ingress/drive_census.json", encoding="utf-8"))
+          assert receipt["result"] == "PASS_IC3_DRIVE_ROOT_AND_CENSUS"
+          assert receipt["source"]["root_verified"] is True
+          PY
 
-      - name: Upload ingress receipt
+      - name: Upload IC3 proof or failure receipt
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: drive-ingress-census
-          path: output/drive_ingress/drive_census.json
+          name: gm-i-c-ic3-drive-ingress
+          path: output/drive_ingress/*.json
           if-no-files-found: error
           retention-days: 30
+
+      - name: Enforce IC3 pass gate
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, pathlib, sys
+          path = pathlib.Path("output/drive_ingress/ic3_status.json")
+          if not path.exists():
+              print("IC3 status receipt missing", file=sys.stderr)
+              raise SystemExit(1)
+          status = json.loads(path.read_text(encoding="utf-8"))
+          print(json.dumps(status, sort_keys=True))
+          if status.get("result") != "PASS" or status.get("classification") != "IC3_DRIVE_READONLY_GT0_STEP_PASS":
+              raise SystemExit(1)
+          PY
