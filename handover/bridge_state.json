@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "bridge_version": "0.2.0",
+  "mode": "HUMAN_TRIGGERED_CONNECTOR_ENABLED",
+  "current_gate": "BASELINE_MATERIALIZATION_AND_PARITY_TESTING",
+  "drive_ingress": "EXTERNAL_CONNECTOR_OR_EXPORTED_WORKSPACE",
+  "github_egress": "BRANCH_COMMIT_PR",
+  "evidence_states": [
+    "VERIFIED",
+    "IMPLEMENTED",
+    "DECLARED",
+    "INFERRED",
+    "PARTIAL",
+    "DEFERRED"
+  ],
+  "next_action": "Validate and census GMI-* handover packages, then bind accepted receipts to Git commits and PRs.",
+  "automation_boundary": "No unattended Google Drive watcher or OAuth credential is stored in this repository."
+}
