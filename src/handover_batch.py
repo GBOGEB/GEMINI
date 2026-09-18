@@ -33,7 +33,7 @@ def _manifest_digest(manifest: dict[str, Any]) -> str:
 
 
 def _idempotency_key(session_id: str, manifest_digest: str) -> str:
-    return hashlib.sha256(f"{session_id}|{manifest_digest}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"{session_id}|{manifest_digest}".encode()).hexdigest()
 
 
 def load_ledger(path: Path | None) -> dict[str, Any]:
