@@ -36,3 +36,26 @@ def test_evidence_state_contract_is_closed_set() -> None:
         "PARTIAL",
         "DEFERRED",
     }
+
+def test_census_ignores_non_gmi_receipt_namespaces(tmp_path: Path) -> None:
+    gmi = {
+        "schema_version": 1,
+        "receipt_type": "drive_ingress",
+        "session_id": "GMI-TEST-001",
+        "source_agent": "Gemini",
+        "status": "DECLARED",
+        "current_gate": "TEST",
+        "next_action": "Review",
+    }
+    (tmp_path / "GMI-TEST-001.yaml").write_text(
+        yaml.safe_dump(gmi), encoding="utf-8"
+    )
+    (tmp_path / "R3-FOREIGN-RECEIPT.yaml").write_text(
+        yaml.safe_dump({"schema_version": 99, "status": "PASS"}), encoding="utf-8"
+    )
+
+    census = build_census(tmp_path)
+    assert census["receipt_count"] == 1
+    assert census["invalid_count"] == 0
+    assert census["receipts"][0]["session_id"] == "GMI-TEST-001"
+
