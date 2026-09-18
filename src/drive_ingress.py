@@ -59,7 +59,7 @@ class DriveItem:
     relative_path: str
 
     @classmethod
-    def from_api(cls, raw: dict[str, Any], relative_path: str) -> "DriveItem":
+    def from_api(cls, raw: dict[str, Any], relative_path: str) -> DriveItem:
         size_raw = raw.get("size")
         return cls(
             id=str(raw["id"]),
