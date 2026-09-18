@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -39,12 +40,14 @@ def main() -> None:
     if not py.is_file():
         fail("runtime relocation-safe run-python launcher missing")
 
+    clean_env = os.environ.copy()
+    clean_env.pop("LD_LIBRARY_PATH", None)
     probe = subprocess.run(
         [str(py), "-c",
          "import json,platform,sys,importlib.metadata as m;"
          "req={'PyYAML':'6.0.1','openpyxl':'3.1.5','python-docx':'1.2.0','python-pptx':'1.0.2','reportlab':'5.0.1','pypdf':'6.0.0'};"
          "print(json.dumps({'python':platform.python_version(),'major_minor':f'{sys.version_info.major}.{sys.version_info.minor}','versions':{k:m.version(k) for k in req}},sort_keys=True))"],
-        text=True, capture_output=True
+        text=True, capture_output=True, env=clean_env
     )
     if probe.returncode:
         fail(probe.stderr.strip() or "runtime probe failed")

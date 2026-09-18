@@ -1,0 +1,32 @@
+schema: gmi.r3_successor.capsule_validator_clean_env_repair.v1
+as_of: '2026-09-18T13:28:00+02:00'
+parent_pr: GBOGEB/GEMINI#18
+trigger: POST_MERGE_EXACT_HEAD_CODEX_REVIEW
+finding:
+  class: VALIDATOR_AMBIENT_LIBRARY_PATH_LEAK
+  risk: BROKEN_RELOCATED_LAUNCHER_COULD_PASS_WITH_HOST_LIBPYTHON
+repair:
+  validator: scripts/validate_r3_exact_env_capsule.py
+  action: REMOVE_LD_LIBRARY_PATH_FROM_SUBPROCESS_ENV_BEFORE_LAUNCHER_PROBE
+  manifest_contract: gmi.r3_successor.exact_env_capsule.v2
+external_exact_head_reproof:
+  producer_head: 1192e030d76bc88dbfb6c735f0f11d02528a7b4e
+  workflow_run: 35339129647
+  artifact_id: 10544103232
+  artifact_zip_sha256: 64c363cfeaded7fc6b156b28fe344166e3c560aac3ea43f50b2695220cffd912
+  inner_archive_sha256: c77566e6c6aa261034f86303ef1be7b033622f357333e3d474d3bde8fb3ec44e
+  external_launcher_probe_clean_ld_library_path: PASS
+  python: 3.12.14
+  exact_dependency_lock: PASS
+  relocated_self_test: PASS_CLEAN_LD_LIBRARY_PATH
+state:
+  portable_exact_environment_bytes: PASS
+  standalone_validator_repair: THIS_PR
+  successor_git_object: WAIT_PHYSICAL_RETURN
+  r3_release_production_dov: WITHHELD
+non_compensation:
+  issue_923: RED_OWNER_ACTION
+  gt_bdq_0: RED_BLOCKED_ON_923_INFRA_PREEXECUTION
+  canonical_gt_credit: NONE
+  authority_transfer: false
+  formal_credit_delta: 0
