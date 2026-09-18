@@ -18,7 +18,7 @@ repair:
   add_runtime_launcher: r3-python/run-python
   launcher_action: PREPEND_CAPSULE_LIB_TO_LD_LIBRARY_PATH_THEN_EXEC_BIN_PYTHON
   clean_environment_self_test: UNSET_AMBIENT_LD_LIBRARY_PATH_BEFORE_RELOCATED_TEST
-  manifest_schema_after: gmi.r3.successor.exact_env_capsule.v2
+  manifest_schema_after: gmi.r3_successor.exact_env_capsule.v2
   relocated_self_test_after: PASS_CLEAN_LD_LIBRARY_PATH
 acceptance:
   required_external_reproof: true
