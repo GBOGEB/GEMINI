@@ -4,6 +4,25 @@ Active production source: `1248290ca0a9d55ec83d0efa0235ed1a45a88eeb`.
 
 Historical predecessor `70964e5f...` remains immutable provenance and must not be relabelled.
 
+## QPS-native consumer synchronization
+
+QPS has now materialized the governed Windows producer in the actual execution repository:
+
+- QPS #1491 / merge `5f325217c6ff5381e77be36a7aae5203c26e7546`: local producer materialization;
+- QPS #1492 / merge `43e23f40976279088018fcf6365be99e9888526c`: self-locating QPS-native invocation;
+- QPS #1495: restart/perpetuation rebind to the QPS-local entrypoint.
+
+Therefore the preferred operator path for the admitted real clone is now **from the QPS clone itself**:
+
+```powershell
+cd C:\Users\gbonthuy\cryoplant-project
+powershell -ExecutionPolicy Bypass -File .\scripts\build_qps_r3_successor_handoff.ps1
+```
+
+The GEMINI copy remains the upstream producer lineage/reference implementation. QPS-local
+materialization removes cross-repository path ambiguity; it does not transfer release or
+engineering authority.
+
 ## A. Genuine Git-object handoff
 
 ### Windows / PowerShell — preferred for the admitted real clone
