@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover - optional dependency
     _run_sanity_checks = None
 
 try:
-    from src.stats_engine import (  # type: ignore
+    from src.stats_engine import (
         analyze_matrix_regression as _analyze_matrix_regression,
         build_drift_alerts_payload as _build_drift_alerts_payload,
         detect_drift as _detect_drift,
@@ -67,7 +67,7 @@ def _load_ssot(path: str = CONFIG_PATH) -> dict:
     data = yaml.safe_load(raw)
     if not isinstance(data, dict):
         msg = "SSOT config root must be a mapping"
-        raise ValueError(msg)
+        raise TypeError(msg)
     return data
 
 
@@ -1140,7 +1140,7 @@ def main() -> None:
     params = ssot.get("simulation_parameters", {})
     if not isinstance(params, dict):
         msg = "Missing or invalid simulation_parameters in SSOT"
-        raise ValueError(msg)
+        raise TypeError(msg)
 
     sanity_results = collect_sanity_results(params)
     telemetry_tuples = _extract_tuple_telemetry(ssot)
