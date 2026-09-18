@@ -25,7 +25,11 @@ except ImportError:  # pragma: no cover - optional dependency
 try:
     from src.stats_engine import (
         analyze_matrix_regression as _analyze_matrix_regression,
+    )
+    from src.stats_engine import (
         build_drift_alerts_payload as _build_drift_alerts_payload,
+    )
+    from src.stats_engine import (
         detect_drift as _detect_drift,
     )
 
