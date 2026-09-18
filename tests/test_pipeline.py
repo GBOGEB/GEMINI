@@ -3,7 +3,11 @@ from pathlib import Path
 import yaml
 
 from src.parameters import load_config
-from src.pipeline import _extract_tuple_telemetry, collect_sanity_results, generate_html_report
+from src.pipeline import (
+    _extract_tuple_telemetry,
+    collect_sanity_results,
+    generate_html_report,
+)
 from src.validators import run_sanity_checks
 
 CONFIG_PATH = "config/blsn_config.yaml"
