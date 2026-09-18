@@ -1,0 +1,32 @@
+schema: gmi.r3_successor.capsule_portability_repair.v1
+as_of: '2026-09-18T13:18:00+02:00'
+parent_pr: GBOGEB/GEMINI#17
+trigger: EXTERNAL_RELOCATION_REPROOF
+observed:
+  workflow_run: 35338333168
+  artifact_id: 10543767484
+  workflow_conclusion: success
+  archive_sha256: a6ad66d7aca94fc3ff5fc620dc0334f3d2654b5ab338ff6c4b938d7297f9ae52
+  external_unpack_result: FAIL_RAW_BIN_PYTHON_MISSING_LIBPYTHON_RUNTIME_PATH
+  failure_text: libpython3.12.so.1.0_cannot_open_shared_object_file
+  exact_packages_in_archive: PASS
+  python_family_in_archive: '3.12'
+diagnosis:
+  class: PORTABILITY_LAUNCHER_GAP
+  application_or_qps_source_defect: false
+repair:
+  add_runtime_launcher: r3-python/run-python
+  launcher_action: PREPEND_CAPSULE_LIB_TO_LD_LIBRARY_PATH_THEN_EXEC_BIN_PYTHON
+  clean_environment_self_test: UNSET_AMBIENT_LD_LIBRARY_PATH_BEFORE_RELOCATED_TEST
+  manifest_schema_after: gmi.r3_successor.exact_env_capsule.v2
+  relocated_self_test_after: PASS_CLEAN_LD_LIBRARY_PATH
+acceptance:
+  required_external_reproof: true
+  old_v1_capsule_accepted_for_qps: false
+  new_v2_capsule_must_execute_after_download_and_relocation: true
+non_compensation:
+  r3_acceptance: NOT_CREATED
+  runtime_gold: NONE
+  canonical_gt_credit: NONE
+  authority_transfer: false
+  formal_credit_delta: 0

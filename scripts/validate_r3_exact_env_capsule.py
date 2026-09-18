@@ -35,9 +35,9 @@ def main() -> None:
     root = Path(args.runtime_root)
     manifest_path = Path(args.manifest)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    py = root / "bin" / "python"
+    py = root / "run-python"
     if not py.is_file():
-        fail("runtime bin/python missing")
+        fail("runtime relocation-safe run-python launcher missing")
 
     probe = subprocess.run(
         [str(py), "-c",
@@ -54,13 +54,13 @@ def main() -> None:
     if observed["versions"] != REQ:
         fail(f"dependency lock mismatch: {observed['versions']}")
 
-    if manifest.get("schema") != "gmi.r3_successor.exact_env_capsule.v1":
+    if manifest.get("schema") != "gmi.r3_successor.exact_env_capsule.v2":
         fail("manifest schema mismatch")
     if manifest.get("python_family") != "3.12":
         fail("manifest python family mismatch")
     if manifest.get("exact_dependencies") != REQ:
         fail("manifest dependency contract mismatch")
-    if manifest.get("relocated_self_test") != "PASS":
+    if manifest.get("relocated_self_test") != "PASS_CLEAN_LD_LIBRARY_PATH":
         fail("manifest does not bind relocated self-test PASS")
 
     if args.archive:
