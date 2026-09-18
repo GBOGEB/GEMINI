@@ -32,10 +32,18 @@ jobs:
           DIST="$ROOT/dist"
           mkdir -p "$RUNTIME" "$DIST"
           cp -a "$pythonLocation/." "$RUNTIME/"
-          "$RUNTIME/bin/python" -m pip install --upgrade pip
-          "$RUNTIME/bin/python" -m pip install --no-cache-dir             "PyYAML==6.0.1"             "openpyxl==3.1.5"             "python-docx==1.2.0"             "python-pptx==1.0.2"             "reportlab==5.0.1"             "pypdf==6.0.0"
+          cat > "$RUNTIME/run-python" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          HERE="$(cd "$(dirname "$0")" && pwd)"
+          export LD_LIBRARY_PATH="$HERE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          exec "$HERE/bin/python" "$@"
+          SH
+          chmod +x "$RUNTIME/run-python"
+          "$RUNTIME/run-python" -m pip install --upgrade pip
+          "$RUNTIME/run-python" -m pip install --no-cache-dir             "PyYAML==6.0.1"             "openpyxl==3.1.5"             "python-docx==1.2.0"             "python-pptx==1.0.2"             "reportlab==5.0.1"             "pypdf==6.0.0"
 
-          "$RUNTIME/bin/python" - <<'PY'
+          "$RUNTIME/run-python" - <<'PY'
           import importlib.metadata as m, platform, sys
           req={'PyYAML':'6.0.1','openpyxl':'3.1.5','python-docx':'1.2.0','python-pptx':'1.0.2','reportlab':'5.0.1','pypdf':'6.0.0'}
           obs={k:m.version(k) for k in req}
@@ -52,7 +60,7 @@ jobs:
           RELOC="$ROOT/relocated"
           mkdir -p "$RELOC"
           tar -C "$RELOC" -xzf "$ARCHIVE"
-          "$RELOC/r3-python/bin/python" - <<'PY'
+          env -u LD_LIBRARY_PATH "$RELOC/r3-python/run-python" - <<'PY'
           import importlib.metadata as m, platform, sys
           req={'PyYAML':'6.0.1','openpyxl':'3.1.5','python-docx':'1.2.0','python-pptx':'1.0.2','reportlab':'5.0.1','pypdf':'6.0.0'}
           obs={k:m.version(k) for k in req}
@@ -61,13 +69,13 @@ jobs:
           print("RELOCATED_SELF_TEST=PASS", platform.python_version(), obs)
           PY
 
-          "$RELOC/r3-python/bin/python" - "$DIST/QPS_R3_PY312_EXACT_ENV_LINUX_X86_64.manifest.json" "$SHA" <<'PY'
+          env -u LD_LIBRARY_PATH "$RELOC/r3-python/run-python" - "$DIST/QPS_R3_PY312_EXACT_ENV_LINUX_X86_64.manifest.json" "$SHA" <<'PY'
           import importlib.metadata as m, json, platform, sys
           from pathlib import Path
           out=Path(sys.argv[1]); sha=sys.argv[2]
           req={'PyYAML':'6.0.1','openpyxl':'3.1.5','python-docx':'1.2.0','python-pptx':'1.0.2','reportlab':'5.0.1','pypdf':'6.0.0'}
           obj={
-            'schema':'gmi.r3_successor.exact_env_capsule.v1',
+            'schema':'gmi.r3_successor.exact_env_capsule.v2',
             'status':'PASS_BUILD_AND_RELOCATED_SELF_TEST',
             'platform':'linux_x86_64',
             'python_family':'3.12',
@@ -75,7 +83,7 @@ jobs:
             'exact_dependencies':{k:m.version(k) for k in req},
             'archive_filename':'QPS_R3_PY312_EXACT_ENV_LINUX_X86_64.tar.gz',
             'archive_sha256':sha,
-            'relocated_self_test':'PASS',
+            'relocated_self_test':'PASS_CLEAN_LD_LIBRARY_PATH',
             'source_workflow':'GBOGEB/GEMINI/.github/workflows/r3_successor_exact_env_capsule.yml',
             'authority_transfer':False,
             'formal_credit_delta':0,
