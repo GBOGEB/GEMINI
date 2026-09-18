@@ -48,7 +48,7 @@ def validate_receipt(path: Path) -> list[str]:
 def build_census(receipts_dir: Path = DEFAULT_RECEIPTS) -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
     invalid = 0
-    for path in sorted(receipts_dir.glob("*.yaml")):
+    for path in sorted(receipts_dir.glob("GMI-*.yaml")):
         data = _load_yaml(path)
         errors = validate_receipt(path)
         if errors:
