@@ -63,7 +63,7 @@ def _headers(github_token: str | None) -> dict[str, str]:
 def _fetch_bytes(url: str, github_token: str | None) -> bytes | None:
     request = Request(url=url, headers=_headers(github_token))
     try:
-        with urlopen(request, timeout=30) as response:  # noqa: S310
+        with urlopen(request, timeout=30) as response:
             return response.read()
     except (HTTPError, URLError, TimeoutError):
         return None

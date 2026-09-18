@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Gemini CLI hook for governed Gemini -> Drive -> GitHub handovers.
 
 Contract:
@@ -148,7 +147,7 @@ def main() -> None:
             result = {}
 
         sys.stdout.write(json.dumps(result, separators=(",", ":")))
-    except Exception as exc:  # noqa: BLE001 - hook must fail open with a warning
+    except Exception as exc:
         print(f"bridge_hook warning: {exc}", file=sys.stderr)
         sys.stdout.write(json.dumps({"systemMessage": "Bridge hook warning; interaction continues."}))
         raise SystemExit(1) from exc
