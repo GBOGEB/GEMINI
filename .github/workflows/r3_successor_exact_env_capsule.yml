@@ -1,0 +1,98 @@
+name: R3 Successor Portable Exact Environment
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/r3_successor_exact_env_capsule.yml"
+      - "scripts/validate_r3_exact_env_capsule.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-exact-env-capsule:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up CPython 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build portable exact runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/r3-capsule"
+          RUNTIME="$ROOT/r3-python"
+          DIST="$ROOT/dist"
+          mkdir -p "$RUNTIME" "$DIST"
+          cp -a "$pythonLocation/." "$RUNTIME/"
+          "$RUNTIME/bin/python" -m pip install --upgrade pip
+          "$RUNTIME/bin/python" -m pip install --no-cache-dir             "PyYAML==6.0.1"             "openpyxl==3.1.5"             "python-docx==1.2.0"             "python-pptx==1.0.2"             "reportlab==5.0.1"             "pypdf==6.0.0"
+
+          "$RUNTIME/bin/python" - <<'PY'
+          import importlib.metadata as m, platform, sys
+          req={'PyYAML':'6.0.1','openpyxl':'3.1.5','python-docx':'1.2.0','python-pptx':'1.0.2','reportlab':'5.0.1','pypdf':'6.0.0'}
+          obs={k:m.version(k) for k in req}
+          assert (sys.version_info.major,sys.version_info.minor)==(3,12), sys.version
+          assert obs==req, (req,obs)
+          print(platform.python_version(), obs)
+          PY
+
+          tar -C "$ROOT" -czf "$DIST/QPS_R3_PY312_EXACT_ENV_LINUX_X86_64.tar.gz" r3-python
+          ARCHIVE="$DIST/QPS_R3_PY312_EXACT_ENV_LINUX_X86_64.tar.gz"
+          SHA="$(sha256sum "$ARCHIVE" | awk '{print $1}')"
+          printf '%s  %s\n' "$SHA" "$(basename "$ARCHIVE")" > "$ARCHIVE.sha256"
+
+          RELOC="$ROOT/relocated"
+          mkdir -p "$RELOC"
+          tar -C "$RELOC" -xzf "$ARCHIVE"
+          "$RELOC/r3-python/bin/python" - <<'PY'
+          import importlib.metadata as m, platform, sys
+          req={'PyYAML':'6.0.1','openpyxl':'3.1.5','python-docx':'1.2.0','python-pptx':'1.0.2','reportlab':'5.0.1','pypdf':'6.0.0'}
+          obs={k:m.version(k) for k in req}
+          assert (sys.version_info.major,sys.version_info.minor)==(3,12), sys.version
+          assert obs==req, (req,obs)
+          print("RELOCATED_SELF_TEST=PASS", platform.python_version(), obs)
+          PY
+
+          "$RELOC/r3-python/bin/python" - "$DIST/QPS_R3_PY312_EXACT_ENV_LINUX_X86_64.manifest.json" "$SHA" <<'PY'
+          import importlib.metadata as m, json, platform, sys
+          from pathlib import Path
+          out=Path(sys.argv[1]); sha=sys.argv[2]
+          req={'PyYAML':'6.0.1','openpyxl':'3.1.5','python-docx':'1.2.0','python-pptx':'1.0.2','reportlab':'5.0.1','pypdf':'6.0.0'}
+          obj={
+            'schema':'gmi.r3_successor.exact_env_capsule.v1',
+            'status':'PASS_BUILD_AND_RELOCATED_SELF_TEST',
+            'platform':'linux_x86_64',
+            'python_family':'3.12',
+            'python_version':platform.python_version(),
+            'exact_dependencies':{k:m.version(k) for k in req},
+            'archive_filename':'QPS_R3_PY312_EXACT_ENV_LINUX_X86_64.tar.gz',
+            'archive_sha256':sha,
+            'relocated_self_test':'PASS',
+            'source_workflow':'GBOGEB/GEMINI/.github/workflows/r3_successor_exact_env_capsule.yml',
+            'authority_transfer':False,
+            'formal_credit_delta':0,
+          }
+          assert obj['exact_dependencies']==req
+          out.write_text(json.dumps(obj,indent=2,sort_keys=True)+'\n')
+          PY
+
+          python scripts/validate_r3_exact_env_capsule.py             --runtime-root "$RELOC/r3-python"             --manifest "$DIST/QPS_R3_PY312_EXACT_ENV_LINUX_X86_64.manifest.json"             --archive "$ARCHIVE"
+
+      - name: Upload portable exact environment capsule
+        uses: actions/upload-artifact@v4
+        with:
+          name: qps-r3-py312-exact-env-linux-x86_64
+          path: |
+            ${{ runner.temp }}/r3-capsule/dist/QPS_R3_PY312_EXACT_ENV_LINUX_X86_64.tar.gz
+            ${{ runner.temp }}/r3-capsule/dist/QPS_R3_PY312_EXACT_ENV_LINUX_X86_64.tar.gz.sha256
+            ${{ runner.temp }}/r3-capsule/dist/QPS_R3_PY312_EXACT_ENV_LINUX_X86_64.manifest.json
+          if-no-files-found: error
+          retention-days: 30
