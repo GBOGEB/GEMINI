@@ -151,7 +151,7 @@ def validate_manifest(manifest: dict[str, Any], package_dir: Path) -> dict[str, 
                     seen_ids.add(artifact_id)
 
             artifact_type = ref.get("type")
-            if artifact_type not in ARTIFACT_TYPES:
+            if not isinstance(artifact_type, str) or artifact_type not in ARTIFACT_TYPES:
                 errors.append(
                     f"{prefix}.type must be one of {sorted(ARTIFACT_TYPES)}, got {artifact_type!r}"
                 )
