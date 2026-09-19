@@ -212,3 +212,15 @@ def test_unhashable_artifact_type_rejects_without_exception(tmp_path: Path) -> N
     receipt = validate_package(package)
     assert receipt["verdict"] == "REJECT"
     assert any(".type must be one of" in error for error in receipt["errors"])
+
+
+def test_nonfinite_float_rejects_canonical_digest(tmp_path: Path) -> None:
+    package = tmp_path / "GMI-TEST-001"
+    manifest = _manifest()
+    manifest["source_refs"] = [{"score": float("nan")}]
+    _write_manifest(package, manifest)
+
+    receipt = validate_package(package)
+    assert receipt["verdict"] == "REJECT"
+    assert receipt["manifest_digest"] is None
+    assert any("non-finite float" in error for error in receipt["errors"])
