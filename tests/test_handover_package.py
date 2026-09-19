@@ -201,3 +201,14 @@ def test_non_json_yaml_value_rejects_canonical_digest(tmp_path: Path) -> None:
     assert receipt["verdict"] == "REJECT"
     assert receipt["manifest_digest"] is None
     assert any("manifest canonicalization failed" in error for error in receipt["errors"])
+
+
+def test_unhashable_artifact_type_rejects_without_exception(tmp_path: Path) -> None:
+    package = tmp_path / "GMI-TEST-001"
+    manifest = _manifest()
+    manifest["artifact_refs"] = [{"type": ["local_file"], "path": "ARTIFACTS/x"}]
+    _write_manifest(package, manifest)
+
+    receipt = validate_package(package)
+    assert receipt["verdict"] == "REJECT"
+    assert any(".type must be one of" in error for error in receipt["errors"])
