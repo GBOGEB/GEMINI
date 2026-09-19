@@ -133,3 +133,19 @@ def test_invalid_manifest_is_not_reread_outside_guarded_validation(tmp_path: Pat
     assert census["package_count"] == 1
     assert census["packages"][0]["idempotency_state"] == "INVALID"
     assert census["packages"][0]["manifest_digest"] is None
+
+
+def test_rejected_workspace_preserves_prior_ledger(tmp_path: Path) -> None:
+    prior = {
+        "schema_version": 1,
+        "sessions": {
+            "GMI-KEEP": {
+                "manifest_digest": "a" * 64,
+                "idempotency_key": "b" * 64,
+                "package_verdict": "ACCEPT",
+            }
+        },
+    }
+    census = build_batch_census(tmp_path / "missing", prior)
+    assert census["batch_verdict"] == "REJECT"
+    assert census["updated_ledger"] == prior
