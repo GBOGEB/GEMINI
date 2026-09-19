@@ -8,28 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from src.handover_package import validate_package
-
-
-def _load_manifest(package_dir: Path) -> dict[str, Any] | None:
-    path = package_dir / "MANIFEST" / "manifest.yaml"
-    if not path.is_file():
-        return None
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return data if isinstance(data, dict) else None
-
-
-def _manifest_digest(manifest: dict[str, Any]) -> str:
-    rendered = json.dumps(
-        manifest,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=True,
-        default=str,
-    ).encode("utf-8")
-    return hashlib.sha256(rendered).hexdigest()
 
 
 def _idempotency_key(session_id: str, manifest_digest: str) -> str:
@@ -37,16 +16,37 @@ def _idempotency_key(session_id: str, manifest_digest: str) -> str:
 
 
 def load_ledger(path: Path | None) -> dict[str, Any]:
-    if path is None or not path.is_file():
+    if path is None:
         return {"schema_version": 1, "sessions": {}}
+    if not path.is_file():
+        raise FileNotFoundError(f"explicit ledger input missing: {path}")
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not isinstance(data.get("sessions"), dict):
         raise TypeError("ledger root must be a mapping with a sessions mapping")
     return data
 
 
+def _reject_batch(workspace: Path, reason: str) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "workspace": str(workspace.resolve()),
+        "package_count": 0,
+        "batch_verdict": "REJECT",
+        "duplicate_session_ids": [],
+        "batch_digest": hashlib.sha256(b"").hexdigest(),
+        "packages": [],
+        "errors": [reason],
+        "updated_ledger": {"schema_version": 1, "sessions": {}},
+    }
+
+
 def build_batch_census(workspace: Path, prior_ledger: dict[str, Any] | None = None) -> dict[str, Any]:
     workspace = workspace.resolve()
+    if not workspace.exists():
+        return _reject_batch(workspace, "workspace missing")
+    if not workspace.is_dir():
+        return _reject_batch(workspace, "workspace is not a directory")
+
     ledger = prior_ledger or {"schema_version": 1, "sessions": {}}
     prior_sessions = ledger.get("sessions", {})
     if not isinstance(prior_sessions, dict):
@@ -59,19 +59,18 @@ def build_batch_census(workspace: Path, prior_ledger: dict[str, Any] | None = No
             if path.is_dir() and path.name.startswith("GMI-")
         ),
         key=lambda path: path.name,
-    ) if workspace.is_dir() else []
+    )
 
     entries: list[dict[str, Any]] = []
     session_occurrences: dict[str, int] = {}
 
     for package_dir in package_dirs:
         validation = validate_package(package_dir)
-        manifest = _load_manifest(package_dir)
         session_id = validation.get("session_id")
-        digest = _manifest_digest(manifest) if manifest is not None else None
+        digest = validation.get("manifest_digest")
         key = (
-            _idempotency_key(str(session_id), digest)
-            if isinstance(session_id, str) and digest is not None
+            _idempotency_key(session_id, digest)
+            if isinstance(session_id, str) and isinstance(digest, str)
             else None
         )
         if isinstance(session_id, str):
@@ -151,6 +150,7 @@ def build_batch_census(workspace: Path, prior_ledger: dict[str, Any] | None = No
         "duplicate_session_ids": duplicates,
         "batch_digest": batch_digest,
         "packages": entries,
+        "errors": [],
         "updated_ledger": {
             "schema_version": 1,
             "sessions": updated_sessions,
@@ -166,8 +166,12 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
-    prior = load_ledger(args.ledger_in)
-    census = build_batch_census(args.workspace, prior)
+    try:
+        prior = load_ledger(args.ledger_in)
+        census = build_batch_census(args.workspace, prior)
+    except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        census = _reject_batch(args.workspace, f"batch ingress failed: {type(exc).__name__}: {exc}")
+
     ledger = census["updated_ledger"]
 
     if args.ledger_out:
