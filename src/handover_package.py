@@ -13,6 +13,14 @@ import yaml
 EVIDENCE_STATES = {"VERIFIED", "IMPLEMENTED", "DECLARED", "INFERRED", "PARTIAL", "DEFERRED"}
 PACKAGE_VERDICTS = {"ACCEPT", "REJECT", "DEFER"}
 ARTIFACT_TYPES = {"local_file", "drive_native"}
+SUPPORTED_SCHEMA_VERSION = 1
+NONEMPTY_STRING_FIELDS = {
+    "source_agent",
+    "generated_at",
+    "scope",
+    "current_gate",
+    "next_action",
+}
 REQUIRED_MANIFEST_FIELDS = {
     "schema_version",
     "session_id",
@@ -61,12 +69,25 @@ def validate_manifest(manifest: dict[str, Any], package_dir: Path) -> dict[str, 
     if missing:
         errors.append(f"missing required fields: {', '.join(missing)}")
 
+    schema_version = manifest.get("schema_version")
+    if schema_version != SUPPORTED_SCHEMA_VERSION or isinstance(schema_version, bool):
+        errors.append(
+            f"schema_version must equal supported version {SUPPORTED_SCHEMA_VERSION}"
+        )
+
     session_id = manifest.get("session_id")
     if not isinstance(session_id, str) or not session_id.startswith("GMI-"):
         errors.append("session_id must be a GMI-* string")
 
+    for field in sorted(NONEMPTY_STRING_FIELDS):
+        value = manifest.get(field)
+        if not isinstance(value, str) or not value.strip():
+            errors.append(f"{field} must be a non-empty string")
+
     status = manifest.get("status")
-    if status not in EVIDENCE_STATES:
+    if not isinstance(status, str):
+        errors.append("status must be a string")
+    elif status not in EVIDENCE_STATES:
         errors.append(f"invalid status {status!r}; expected one of {sorted(EVIDENCE_STATES)}")
     elif status == "DEFERRED":
         deferred.append("manifest evidence status is DEFERRED")
@@ -94,7 +115,7 @@ def validate_manifest(manifest: dict[str, Any], package_dir: Path) -> dict[str, 
                     seen_ids.add(artifact_id)
 
             artifact_type = ref.get("type")
-            if artifact_type not in ARTIFACT_TYPES:
+            if not isinstance(artifact_type, str) or artifact_type not in ARTIFACT_TYPES:
                 errors.append(
                     f"{prefix}.type must be one of {sorted(ARTIFACT_TYPES)}, got {artifact_type!r}"
                 )
@@ -170,7 +191,7 @@ def validate_package(
 
     try:
         manifest = _load_yaml(manifest_path)
-    except (OSError, TypeError, yaml.YAMLError) as exc:
+    except (OSError, UnicodeError, TypeError, yaml.YAMLError) as exc:
         return {
             "schema_version": 1,
             "package_dir": str(package_dir),
