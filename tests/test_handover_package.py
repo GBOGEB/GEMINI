@@ -139,3 +139,65 @@ def test_optional_missing_artifact_defers(tmp_path: Path) -> None:
     assert receipt["verdict"] == "DEFER"
     assert receipt["errors"] == []
     assert receipt["deferred"]
+
+
+def test_unsupported_schema_version_rejects(tmp_path: Path) -> None:
+    package = tmp_path / "GMI-TEST-001"
+    manifest = _manifest()
+    manifest["schema_version"] = 99
+    _write_manifest(package, manifest)
+
+    receipt = validate_package(package)
+    assert receipt["verdict"] == "REJECT"
+    assert any("schema_version must be one of" in error for error in receipt["errors"])
+
+
+def test_empty_required_governance_value_rejects(tmp_path: Path) -> None:
+    package = tmp_path / "GMI-TEST-001"
+    manifest = _manifest()
+    manifest["source_agent"] = "   "
+    _write_manifest(package, manifest)
+
+    receipt = validate_package(package)
+    assert receipt["verdict"] == "REJECT"
+    assert any("source_agent must be a non-empty string" in error for error in receipt["errors"])
+
+
+def test_unhashable_status_rejects_without_exception(tmp_path: Path) -> None:
+    package = tmp_path / "GMI-TEST-001"
+    manifest = _manifest()
+    manifest["status"] = ["DECLARED"]
+    _write_manifest(package, manifest)
+
+    receipt = validate_package(package)
+    assert receipt["verdict"] == "REJECT"
+    assert "status must be a string" in receipt["errors"]
+
+
+def test_invalid_utf8_manifest_returns_structured_reject(tmp_path: Path) -> None:
+    package = tmp_path / "GMI-TEST-001"
+    target = package / "MANIFEST" / "manifest.yaml"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"schema_version: 1\nsource_agent: \xff\xfe\n")
+
+    receipt = validate_package(package)
+    assert receipt["verdict"] == "REJECT"
+    assert receipt["manifest_digest"] is None
+    assert any("manifest load failed" in error for error in receipt["errors"])
+
+
+def test_non_json_yaml_value_rejects_canonical_digest(tmp_path: Path) -> None:
+    package = tmp_path / "GMI-TEST-001"
+    manifest = _manifest()
+    manifest["source_refs"] = [{"observed_on": "placeholder"}]
+    _write_manifest(package, manifest)
+
+    target = package / "MANIFEST" / "manifest.yaml"
+    text = target.read_text(encoding="utf-8")
+    text = text.replace("observed_on: placeholder", "observed_on: 2026-09-18")
+    target.write_text(text, encoding="utf-8")
+
+    receipt = validate_package(package)
+    assert receipt["verdict"] == "REJECT"
+    assert receipt["manifest_digest"] is None
+    assert any("manifest canonicalization failed" in error for error in receipt["errors"])
