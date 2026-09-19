@@ -100,3 +100,13 @@ def test_non_mapping_inputs_are_rejected() -> None:
         bind_evidence([], _ic3_pass())  # type: ignore[arg-type]
     with pytest.raises(TypeError):
         bind_evidence(_batch(), [])  # type: ignore[arg-type]
+
+
+def test_unhashable_batch_verdict_returns_structured_reject() -> None:
+    binding = bind_evidence(
+        {"batch_verdict": ["ACCEPT"], "package_count": 1},
+        _ic3_pass(),
+    )
+    assert binding["content_gate"]["state"] == "REJECT"
+    assert binding["content_gate"]["classification"] == "BATCH_RECEIPT_INVALID"
+    assert binding["control_readiness"] == "WITHHELD"
