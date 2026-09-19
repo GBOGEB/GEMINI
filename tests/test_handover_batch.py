@@ -1,8 +1,9 @@
 from pathlib import Path
 
+import pytest
 import yaml
 
-from src.handover_batch import build_batch_census
+from src.handover_batch import build_batch_census, load_ledger
 
 
 def _manifest(session_id: str, scope: str = "test") -> dict:
@@ -96,3 +97,45 @@ def test_empty_workspace_is_deterministic_accept(tmp_path: Path) -> None:
     assert census["package_count"] == 0
     assert census["batch_verdict"] == "ACCEPT"
     assert census["duplicate_session_ids"] == []
+
+
+def test_missing_workspace_rejects_instead_of_empty_accept(tmp_path: Path) -> None:
+    missing = tmp_path / "not-mounted"
+    census = build_batch_census(missing)
+    assert census["batch_verdict"] == "REJECT"
+    assert census["package_count"] == 0
+    assert any("workspace missing" in error for error in census["errors"])
+
+
+def test_unreadable_manifest_stays_on_structured_reject_path(tmp_path: Path) -> None:
+    package = tmp_path / "GMI-A"
+    target = package / "MANIFEST" / "manifest.yaml"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b"schema_version: 1\nsource_agent: \xff\xfe\n")
+
+    census = build_batch_census(tmp_path)
+    assert census["batch_verdict"] == "REJECT"
+    assert census["packages"][0]["idempotency_state"] == "INVALID"
+    assert census["packages"][0]["manifest_digest"] is None
+    assert any(
+        "manifest load failed" in error
+        for error in census["packages"][0]["errors"]
+    )
+
+
+def test_explicit_missing_ledger_fails_closed(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError, match="explicit ledger missing"):
+        load_ledger(tmp_path / "missing-ledger.json")
+
+
+def test_yaml_only_set_is_rejected_for_deterministic_hashing(tmp_path: Path) -> None:
+    manifest = _manifest("GMI-A")
+    manifest["yaml_only_set"] = {"x", "y"}
+    _package(tmp_path, "GMI-A", manifest)
+
+    census = build_batch_census(tmp_path)
+    assert census["batch_verdict"] == "REJECT"
+    row = census["packages"][0]
+    assert row["idempotency_state"] == "INVALID"
+    assert row["manifest_digest"] is None
+    assert any("JSON-compatible" in error for error in row["errors"])

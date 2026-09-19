@@ -17,7 +17,7 @@ def _content_gate(batch_receipt: dict[str, Any]) -> dict[str, Any]:
     verdict = batch_receipt.get("batch_verdict")
     package_count = batch_receipt.get("package_count")
 
-    if verdict not in BATCH_VERDICTS:
+    if not isinstance(verdict, str) or verdict not in BATCH_VERDICTS:
         return {
             "state": "REJECT",
             "classification": "BATCH_RECEIPT_INVALID",
