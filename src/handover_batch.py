@@ -26,7 +26,12 @@ def load_ledger(path: Path | None) -> dict[str, Any]:
     return data
 
 
-def _reject_batch(workspace: Path, reason: str) -> dict[str, Any]:
+def _reject_batch(
+    workspace: Path,
+    reason: str,
+    prior_ledger: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    preserved = prior_ledger or {"schema_version": 1, "sessions": {}}
     return {
         "schema_version": 1,
         "workspace": str(workspace.resolve()),
@@ -36,18 +41,17 @@ def _reject_batch(workspace: Path, reason: str) -> dict[str, Any]:
         "batch_digest": hashlib.sha256(b"").hexdigest(),
         "packages": [],
         "errors": [reason],
-        "updated_ledger": {"schema_version": 1, "sessions": {}},
+        "updated_ledger": preserved,
     }
 
 
 def build_batch_census(workspace: Path, prior_ledger: dict[str, Any] | None = None) -> dict[str, Any]:
     workspace = workspace.resolve()
-    if not workspace.exists():
-        return _reject_batch(workspace, "workspace missing")
-    if not workspace.is_dir():
-        return _reject_batch(workspace, "workspace is not a directory")
-
     ledger = prior_ledger or {"schema_version": 1, "sessions": {}}
+    if not workspace.exists():
+        return _reject_batch(workspace, "workspace missing", ledger)
+    if not workspace.is_dir():
+        return _reject_batch(workspace, "workspace is not a directory", ledger)
     prior_sessions = ledger.get("sessions", {})
     if not isinstance(prior_sessions, dict):
         raise TypeError("ledger sessions must be a mapping")
@@ -174,7 +178,7 @@ def main() -> int:
 
     ledger = census["updated_ledger"]
 
-    if args.ledger_out:
+    if args.ledger_out and census["batch_verdict"] != "REJECT":
         args.ledger_out.parent.mkdir(parents=True, exist_ok=True)
         args.ledger_out.write_text(
             json.dumps(ledger, indent=2, sort_keys=True) + "\n",
