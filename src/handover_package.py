@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -65,7 +66,7 @@ def _validate_json_value(value: Any, path: str = "$") -> None:
     if value is None or isinstance(value, (str, bool, int)):
         return
     if isinstance(value, float):
-        if value != value or value in (float("inf"), float("-inf")):
+        if not math.isfinite(value):
             raise ValueError(f"{path}: non-finite float is not canonical JSON")
         return
     if isinstance(value, list):
