@@ -159,7 +159,7 @@ def test_cyclic_yaml_alias_rejects_batch_without_exception(tmp_path: Path) -> No
         """schema_version: 1
 session_id: GMI-CYCLE
 source_agent: Gemini
-generated_at: 2026-09-18T00:00:00Z
+generated_at: "2026-09-18T00:00:00Z"
 status: DECLARED
 scope: cyclic alias batch regression
 source_refs: &cycle
