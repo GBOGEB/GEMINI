@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -13,14 +14,7 @@ import yaml
 EVIDENCE_STATES = {"VERIFIED", "IMPLEMENTED", "DECLARED", "INFERRED", "PARTIAL", "DEFERRED"}
 PACKAGE_VERDICTS = {"ACCEPT", "REJECT", "DEFER"}
 ARTIFACT_TYPES = {"local_file", "drive_native"}
-SUPPORTED_SCHEMA_VERSION = 1
-NONEMPTY_STRING_FIELDS = {
-    "source_agent",
-    "generated_at",
-    "scope",
-    "current_gate",
-    "next_action",
-}
+SUPPORTED_SCHEMA_VERSIONS = {1}
 REQUIRED_MANIFEST_FIELDS = {
     "schema_version",
     "session_id",
@@ -30,6 +24,13 @@ REQUIRED_MANIFEST_FIELDS = {
     "scope",
     "source_refs",
     "artifact_refs",
+    "current_gate",
+    "next_action",
+}
+REQUIRED_NONEMPTY_STRING_FIELDS = {
+    "source_agent",
+    "generated_at",
+    "scope",
     "current_gate",
     "next_action",
 }
@@ -61,6 +62,38 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _validate_json_value(value: Any, path: str = "$") -> None:
+    if value is None or isinstance(value, (str, bool, int)):
+        return
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError(f"{path}: non-finite float is not canonical JSON")
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _validate_json_value(item, f"{path}[{index}]")
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise TypeError(f"{path}: mapping key {key!r} is not a string")
+            _validate_json_value(item, f"{path}.{key}")
+        return
+    raise TypeError(f"{path}: non-JSON value type {type(value).__name__}")
+
+
+def canonical_manifest_digest(manifest: dict[str, Any]) -> str:
+    _validate_json_value(manifest)
+    rendered = json.dumps(
+        manifest,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(rendered).hexdigest()
+
+
 def validate_manifest(manifest: dict[str, Any], package_dir: Path) -> dict[str, list[str]]:
     errors: list[str] = []
     deferred: list[str] = []
@@ -70,16 +103,20 @@ def validate_manifest(manifest: dict[str, Any], package_dir: Path) -> dict[str, 
         errors.append(f"missing required fields: {', '.join(missing)}")
 
     schema_version = manifest.get("schema_version")
-    if schema_version != SUPPORTED_SCHEMA_VERSION or isinstance(schema_version, bool):
+    if (
+        not isinstance(schema_version, int)
+        or isinstance(schema_version, bool)
+        or schema_version not in SUPPORTED_SCHEMA_VERSIONS
+    ):
         errors.append(
-            f"schema_version must equal supported version {SUPPORTED_SCHEMA_VERSION}"
+            f"schema_version must be one of {sorted(SUPPORTED_SCHEMA_VERSIONS)}, got {schema_version!r}"
         )
 
     session_id = manifest.get("session_id")
-    if not isinstance(session_id, str) or not session_id.startswith("GMI-"):
-        errors.append("session_id must be a GMI-* string")
+    if not isinstance(session_id, str) or not session_id.strip() or not session_id.startswith("GMI-"):
+        errors.append("session_id must be a non-empty GMI-* string")
 
-    for field in sorted(NONEMPTY_STRING_FIELDS):
+    for field in REQUIRED_NONEMPTY_STRING_FIELDS:
         value = manifest.get(field)
         if not isinstance(value, str) or not value.strip():
             errors.append(f"{field} must be a non-empty string")
@@ -177,33 +214,33 @@ def validate_package(
 ) -> dict[str, Any]:
     package_dir = package_dir.resolve()
     manifest_path = package_dir / manifest_relative
+    base_receipt = {
+        "schema_version": 1,
+        "package_dir": str(package_dir),
+        "manifest_path": str(manifest_path),
+        "session_id": None,
+        "evidence_status": None,
+        "manifest_digest": None,
+        "verdict": "REJECT",
+        "errors": [],
+        "deferred": [],
+    }
+
     if not manifest_path.is_file():
-        return {
-            "schema_version": 1,
-            "package_dir": str(package_dir),
-            "manifest_path": str(manifest_path),
-            "session_id": None,
-            "evidence_status": None,
-            "verdict": "REJECT",
-            "errors": ["manifest missing"],
-            "deferred": [],
-        }
+        return {**base_receipt, "errors": ["manifest missing"]}
 
     try:
         manifest = _load_yaml(manifest_path)
     except (OSError, UnicodeError, TypeError, yaml.YAMLError) as exc:
-        return {
-            "schema_version": 1,
-            "package_dir": str(package_dir),
-            "manifest_path": str(manifest_path),
-            "session_id": None,
-            "evidence_status": None,
-            "verdict": "REJECT",
-            "errors": [f"manifest load failed: {exc}"],
-            "deferred": [],
-        }
+        return {**base_receipt, "errors": [f"manifest load failed: {exc}"]}
 
     result = validate_manifest(manifest, package_dir)
+    digest: str | None = None
+    try:
+        digest = canonical_manifest_digest(manifest)
+    except (TypeError, ValueError) as exc:
+        result["errors"].append(f"manifest canonicalization failed: {exc}")
+
     if result["errors"]:
         verdict = "REJECT"
     elif result["deferred"]:
@@ -213,11 +250,10 @@ def validate_package(
 
     assert verdict in PACKAGE_VERDICTS
     return {
-        "schema_version": 1,
-        "package_dir": str(package_dir),
-        "manifest_path": str(manifest_path),
+        **base_receipt,
         "session_id": manifest.get("session_id"),
         "evidence_status": manifest.get("status"),
+        "manifest_digest": digest,
         "verdict": verdict,
         "errors": result["errors"],
         "deferred": result["deferred"],

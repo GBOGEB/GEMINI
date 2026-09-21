@@ -102,9 +102,9 @@ def test_non_mapping_inputs_are_rejected() -> None:
         bind_evidence(_batch(), [])  # type: ignore[arg-type]
 
 
-def test_non_scalar_batch_verdict_returns_invalid_receipt() -> None:
+def test_unhashable_batch_verdict_returns_structured_reject() -> None:
     binding = bind_evidence(
-        {"batch_verdict": [], "package_count": 1},
+        {"batch_verdict": ["ACCEPT"], "package_count": 1},
         _ic3_pass(),
     )
     assert binding["content_gate"]["state"] == "REJECT"
