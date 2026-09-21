@@ -62,22 +62,43 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _validate_json_value(value: Any, path: str = "$") -> None:
+def _validate_json_value(
+    value: Any,
+    path: str = "$",
+    active_container_ids: set[int] | None = None,
+) -> None:
     if value is None or isinstance(value, (str, bool, int)):
         return
     if isinstance(value, float):
         if not math.isfinite(value):
             raise ValueError(f"{path}: non-finite float is not canonical JSON")
         return
-    if isinstance(value, list):
-        for index, item in enumerate(value):
-            _validate_json_value(item, f"{path}[{index}]")
-        return
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if not isinstance(key, str):
-                raise TypeError(f"{path}: mapping key {key!r} is not a string")
-            _validate_json_value(item, f"{path}.{key}")
+    if isinstance(value, (list, dict)):
+        if active_container_ids is None:
+            active_container_ids = set()
+        identity = id(value)
+        if identity in active_container_ids:
+            raise ValueError(f"{path}: cyclic container is not canonical JSON")
+        active_container_ids.add(identity)
+        try:
+            if isinstance(value, list):
+                for index, item in enumerate(value):
+                    _validate_json_value(
+                        item,
+                        f"{path}[{index}]",
+                        active_container_ids,
+                    )
+            else:
+                for key, item in value.items():
+                    if not isinstance(key, str):
+                        raise TypeError(f"{path}: mapping key {key!r} is not a string")
+                    _validate_json_value(
+                        item,
+                        f"{path}.{key}",
+                        active_container_ids,
+                    )
+        finally:
+            active_container_ids.remove(identity)
         return
     raise TypeError(f"{path}: non-JSON value type {type(value).__name__}")
 
