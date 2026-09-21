@@ -224,3 +224,32 @@ def test_nonfinite_float_rejects_canonical_digest(tmp_path: Path) -> None:
     assert receipt["verdict"] == "REJECT"
     assert receipt["manifest_digest"] is None
     assert any("non-finite float" in error for error in receipt["errors"])
+
+
+def test_cyclic_yaml_alias_returns_structured_reject(tmp_path: Path) -> None:
+    package = tmp_path / "GMI-TEST-001"
+    target = package / "MANIFEST" / "manifest.yaml"
+    target.parent.mkdir(parents=True)
+    target.write_text(
+        """schema_version: 1
+session_id: GMI-TEST-001
+source_agent: Gemini
+generated_at: 2026-09-18T00:00:00Z
+status: DECLARED
+scope: cyclic alias regression
+source_refs: &cycle
+  - *cycle
+artifact_refs: []
+current_gate: PACKAGE_VALIDATION
+next_action: review
+""",
+        encoding="utf-8",
+    )
+
+    receipt = validate_package(package)
+    assert receipt["verdict"] == "REJECT"
+    assert receipt["manifest_digest"] is None
+    assert any(
+        "cyclic container is not canonical JSON" in error
+        for error in receipt["errors"]
+    )
