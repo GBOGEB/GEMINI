@@ -149,3 +149,34 @@ def test_rejected_workspace_preserves_prior_ledger(tmp_path: Path) -> None:
     census = build_batch_census(tmp_path / "missing", prior)
     assert census["batch_verdict"] == "REJECT"
     assert census["updated_ledger"] == prior
+
+
+def test_cyclic_yaml_alias_rejects_batch_without_exception(tmp_path: Path) -> None:
+    package = tmp_path / "GMI-CYCLE"
+    target = package / "MANIFEST" / "manifest.yaml"
+    target.parent.mkdir(parents=True)
+    target.write_text(
+        """schema_version: 1
+session_id: GMI-CYCLE
+source_agent: Gemini
+generated_at: 2026-09-18T00:00:00Z
+status: DECLARED
+scope: cyclic alias batch regression
+source_refs: &cycle
+  - *cycle
+artifact_refs: []
+current_gate: BATCH_VALIDATION
+next_action: review
+""",
+        encoding="utf-8",
+    )
+
+    census = build_batch_census(tmp_path)
+    assert census["batch_verdict"] == "REJECT"
+    assert census["package_count"] == 1
+    assert census["packages"][0]["idempotency_state"] == "INVALID"
+    assert census["packages"][0]["manifest_digest"] is None
+    assert any(
+        "cyclic container is not canonical JSON" in error
+        for error in census["packages"][0]["errors"]
+    )
