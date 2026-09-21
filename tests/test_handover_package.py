@@ -253,3 +253,32 @@ next_action: review
         "cyclic container is not canonical JSON" in error
         for error in receipt["errors"]
     )
+
+
+def test_repeated_noncyclic_yaml_alias_remains_acceptable(tmp_path: Path) -> None:
+    package = tmp_path / "GMI-TEST-ALIAS"
+    target = package / "MANIFEST" / "manifest.yaml"
+    target.parent.mkdir(parents=True)
+    target.write_text(
+        """schema_version: 1
+session_id: GMI-TEST-ALIAS
+source_agent: Gemini
+generated_at: 2026-09-18T00:00:00Z
+status: DECLARED
+scope: repeated alias negative control
+shared_ref: &shared
+  kind: observed
+source_refs:
+  - *shared
+  - *shared
+artifact_refs: []
+current_gate: PACKAGE_VALIDATION
+next_action: review
+""",
+        encoding="utf-8",
+    )
+
+    receipt = validate_package(package)
+    assert receipt["verdict"] == "ACCEPT"
+    assert receipt["manifest_digest"] is not None
+    assert receipt["errors"] == []
