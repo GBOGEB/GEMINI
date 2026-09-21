@@ -234,7 +234,7 @@ def test_cyclic_yaml_alias_returns_structured_reject(tmp_path: Path) -> None:
         """schema_version: 1
 session_id: GMI-TEST-001
 source_agent: Gemini
-generated_at: 2026-09-18T00:00:00Z
+generated_at: "2026-09-18T00:00:00Z"
 status: DECLARED
 scope: cyclic alias regression
 source_refs: &cycle
@@ -263,7 +263,7 @@ def test_repeated_noncyclic_yaml_alias_remains_acceptable(tmp_path: Path) -> Non
         """schema_version: 1
 session_id: GMI-TEST-ALIAS
 source_agent: Gemini
-generated_at: 2026-09-18T00:00:00Z
+generated_at: "2026-09-18T00:00:00Z"
 status: DECLARED
 scope: repeated alias negative control
 shared_ref: &shared
