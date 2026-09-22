@@ -1,9 +1,10 @@
 {
   "schema_version": 1,
-  "bridge_version": "0.2.0",
+  "bridge_version": "0.3.0",
   "mode": "HUMAN_TRIGGERED_CONNECTOR_ENABLED",
-  "current_gate": "BASELINE_MATERIALIZATION_AND_PARITY_TESTING",
-  "drive_ingress": "EXTERNAL_CONNECTOR_OR_EXPORTED_WORKSPACE",
+  "observed_at": "2026-09-22",
+  "current_gate": "EXTERNAL_RETURN_ONLY",
+  "drive_ingress": "HOSTED_WORKFLOW_IMPLEMENTED_CONFIG_MISSING",
   "github_egress": "BRANCH_COMMIT_PR",
   "evidence_states": [
     "VERIFIED",
@@ -13,6 +14,59 @@
     "PARTIAL",
     "DEFERRED"
   ],
-  "next_action": "Validate and census GMI-* handover packages, then bind accepted receipts to Git commits and PRs.",
-  "automation_boundary": "No unattended Google Drive watcher or OAuth credential is stored in this repository."
+  "repository_authority": {
+    "branch": "main",
+    "sha": "844440e36bf8dc6b0a194ea6500cbb94f69931fc",
+    "source_pr": 30,
+    "exact_head_sha": "92780d2f1a91943130f6f8f06fb54c1964830257",
+    "proof_runs": [
+      35583284491,
+      35583284541,
+      35583284527
+    ]
+  },
+  "executable_frontier": {
+    "total_open_issues": 2,
+    "active": 0,
+    "blocked_return": 2,
+    "issues": [
+      12,
+      16
+    ]
+  },
+  "blockers": {
+    "12": {
+      "disposition": "RETURN",
+      "gate": "IC3_AUTH_REAL_HOSTED_GT0_STEP_DRIVE_INGRESS_PASS",
+      "latest_hosted_run": 35728106622,
+      "latest_job": 106746634980,
+      "exact_sha": "844440e36bf8dc6b0a194ea6500cbb94f69931fc",
+      "classification": "CONFIG_MISSING",
+      "missing_repository_variables": [
+        "GCP_WORKLOAD_IDENTITY_PROVIDER",
+        "GCP_DRIVE_SERVICE_ACCOUNT"
+      ],
+      "drive_root_id": "1FnbajqBiIjL6Y4-_7tE1D515fNWvHsu3",
+      "drive_root_shared": false,
+      "positive_control_child": "00_CONTROL",
+      "next_trigger": "Install governed WIF/service-account/Viewer ACL/repository variables, then obtain hosted IC3_DRIVE_READONLY_GT0_STEP_PASS."
+    },
+    "16": {
+      "disposition": "RETURN",
+      "gate": "R3_SUCCESSOR_PHYSICAL_GIT_BUNDLE_RETURN",
+      "required_source_sha": "1248290ca0a9d55ec83d0efa0235ed1a45a88eeb",
+      "drive_landing_zone_id": "1B0i2T7hUsSFhHiyw35PPGaeQ_40E2nNr",
+      "required_files": [
+        "QPS_R3_1248290c.bundle",
+        "QPS_R3_1248290c.bundle.sha256",
+        "QPS_R3_1248290c.bundle.receipt.json"
+      ],
+      "required_files_observed": false,
+      "next_trigger": "Run the already-merged Windows producer on the authentic QPS clone and return the exact bundle triplet."
+    }
+  },
+  "next_action": "Preserve zero coding WIP. Re-enter only on a material #12 auth/config return or #16 physical bundle return; repair the first concrete red only.",
+  "automation_boundary": "Scheduled hosted Drive ingress is implemented and fails closed until external WIF/service-account/repository-variable configuration exists. No long-lived service-account key or OAuth refresh token is stored in this repository.",
+  "authority_transfer": false,
+  "formal_credit_delta": 0
 }
