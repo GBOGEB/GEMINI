@@ -1,9 +1,11 @@
 name: Google Drive Handover Ingress
 
+# GM14 RETURN-aware execution policy:
+# Owner/config predicate is governed by issue #12.
+# Do not burn runners on periodic retries while required WIF variables are absent.
+# Re-enter with one manual dispatch after the owner return materially changes.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 */6 * * *"
 
 permissions:
   contents: read
