@@ -2,7 +2,7 @@
   "schema_version": 1,
   "bridge_version": "0.3.0",
   "mode": "HUMAN_TRIGGERED_CONNECTOR_ENABLED",
-  "observed_at": "2026-09-22",
+  "observed_at": "2026-10-02",
   "current_gate": "EXTERNAL_RETURN_ONLY",
   "drive_ingress": "HOSTED_WORKFLOW_IMPLEMENTED_CONFIG_MISSING",
   "github_egress": "BRANCH_COMMIT_PR",
@@ -16,10 +16,12 @@
   ],
   "repository_authority": {
     "branch": "main",
-    "sha": "844440e36bf8dc6b0a194ea6500cbb94f69931fc",
-    "source_pr": 30,
-    "exact_head_sha": "92780d2f1a91943130f6f8f06fb54c1964830257",
-    "proof_runs": [
+    "sha": "7fb84d8c0eaa9b084588f4453c0536727beb7819",
+    "source_pr": 33,
+    "source_pr_head_sha": "d30ee5a0ed2b88b350378bb0dc7c3bb079cbaf90",
+    "source_pr_head_blsn_run": 36990737213,
+    "source_pr_head_blsn_run_state": "QUEUED_AT_RECENSUS",
+    "last_completed_green_proof_runs": [
       35583284491,
       35583284541,
       35583284527
@@ -38,18 +40,27 @@
     "12": {
       "disposition": "RETURN",
       "gate": "IC3_AUTH_REAL_HOSTED_GT0_STEP_DRIVE_INGRESS_PASS",
-      "latest_hosted_run": 35728106622,
-      "latest_job": 106746634980,
-      "exact_sha": "844440e36bf8dc6b0a194ea6500cbb94f69931fc",
+      "latest_hosted_run": 36242240004,
+      "latest_job": 108404801243,
+      "latest_artifact": 10906076190,
+      "latest_artifact_digest": "sha256:11086cab42e45d935da14bdf9e07f5d9031a41871b69261a4625fc341b68d17a",
+      "exact_sha": "949f03c22ec3fada0cbf7c18a3bf56ded5f74fc7",
       "classification": "CONFIG_MISSING",
       "missing_repository_variables": [
         "GCP_WORKLOAD_IDENTITY_PROVIDER",
         "GCP_DRIVE_SERVICE_ACCOUNT"
       ],
       "drive_root_id": "1FnbajqBiIjL6Y4-_7tE1D515fNWvHsu3",
+      "drive_root_title": "GEMINI_QPS_HANDOVER_2026-09-17",
       "drive_root_shared": false,
+      "drive_root_permission_roles": [
+        "owner"
+      ],
+      "service_account_viewer_observed": false,
       "positive_control_child": "00_CONTROL",
-      "next_trigger": "Install governed WIF/service-account/Viewer ACL/repository variables, then obtain hosted IC3_DRIVE_READONLY_GT0_STEP_PASS."
+      "positive_control_child_id": "17DRGwJebm_GPMSZqH1cLnauQUEykN64s",
+      "drive_recensus_observed_at": "2026-10-02",
+      "next_trigger": "Install governed WIF/service-account/Viewer ACL/repository variables, then manually dispatch one hosted run and require IC3_DRIVE_READONLY_GT0_STEP_PASS."
     },
     "16": {
       "disposition": "RETURN",
@@ -62,11 +73,17 @@
         "QPS_R3_1248290c.bundle.receipt.json"
       ],
       "required_files_observed": false,
+      "drive_recensus_observed_at": "2026-10-02",
+      "observed_landing_zone_items": [
+        "R3 Successor Exact Environment Capsule v2 Canonical Receipt — run 35339129647",
+        "HISTORICAL_V1_REJECTED — R3 Exact Environment Capsule Receipt — run 35338333168",
+        "QPS Gen4 Transport Manifest Control"
+      ],
       "next_trigger": "Run the already-merged Windows producer on the authentic QPS clone and return the exact bundle triplet."
     }
   },
-  "next_action": "Preserve zero coding WIP. Re-enter only on a material #12 auth/config return or #16 physical bundle return; repair the first concrete red only.",
-  "automation_boundary": "Scheduled hosted Drive ingress is implemented and fails closed until external WIF/service-account/repository-variable configuration exists. No long-lived service-account key or OAuth refresh token is stored in this repository.",
+  "next_action": "Preserve zero speculative coding WIP. Re-enter #12 only on a material auth/config return or new hosted non-CONFIG_MISSING result; re-enter #16 only when the exact physical bundle triplet appears or a real producer defect is observed.",
+  "automation_boundary": "Drive ingress is manual-dispatch only after recurrence suppression. The implementation fails closed until external WIF/service-account/repository-variable configuration exists. No long-lived service-account key or OAuth refresh token is stored in this repository.",
   "authority_transfer": false,
   "formal_credit_delta": 0
 }
