@@ -5,6 +5,39 @@ title: "Wave 16 – Governance Plan"
 
 # Wave 16 – Governance Plan
 
+> **LIVE RECONCILIATION — 2026-10-02**
+>
+> Reconciled against `main@b9a89705ac0ba00b60c5841211e7cd17115ce66c`.
+> This document remains a **proposal/control plan**, not completion evidence.
+> `authority_transfer=false` and `formal_credit_delta=0`.
+
+## 0 – Live-code reconciliation
+
+The original Wave 16 plan pre-dates the current GEMINI implementation and generated-artifact rules. The following deltas are measured on the bound main snapshot and govern any implementation PR:
+
+| Surface | Live state on b9a89705 | Wave 16 delta |
+|---|---|---|
+| `src/stats_engine.py` | Wave 15 drift/regression engine exists; no `attribute_drift_cause()` | Add only if deterministic insufficient-data behavior and tests are included |
+| `build_drift_alerts_payload()` | Emits `"wave": "15"`; no `cause` key | Add `cause` as an additive field and advance wave identity only with implementation evidence |
+| `src/pipeline.py` | Imports detect/regression/payload helpers; Wave 15 banner; no causal callout | Wire causal result through the producer, not by hand-editing generated HTML |
+| `tests/test_pipeline.py` | Current file has five pipeline/SSOT tests; no causal-attribution test | Add focused unit coverage plus producer/render assertion; do not assume repository-wide test count is 5 |
+| `docs/_data/drift_alerts.json` | Generated artifact is Wave 15 and has no `cause` | Regenerate from code; do not edit as independent truth |
+| `src/federation_bridge.py` | Snapshot has no causal field | Extend producer only if downstream use is still required; regenerate the JSON projection |
+| `repo_manifest.yaml` | `manifest_version: "1.0.0"` | Bump only in the same admitted implementation change, not in this reconciliation-only PR |
+| telemetry evidence | Historical ledger currently contains 2 runs, both `unknown-python`, runtime `0.0` | Current stored evidence is insufficient for empirical cause attribution across Python/OS strata |
+
+### Admission rule
+
+Wave 16 implementation is admitted only if it preserves fail-closed/statistically honest behavior:
+
+1. `cause` MUST be `null` or an explicit `insufficient_data` result when minimum per-stratum evidence is not met.
+2. No synthetic confidence value may be emitted as if measured from the current two-run ledger.
+3. Generated surfaces (`docs/index.html`, `docs/_data/drift_alerts.json`, federation JSON) must be produced by their source code and regenerated in CI.
+4. The manifest/version bump occurs only with the code + tests + regenerated outputs in the same governed implementation PR.
+5. Existing IC3 #12 and R3 #16 RETURN gates remain independent and non-compensating.
+
+---
+
 > **Recommendation: `TEMPLATE_DUPLICATION_WITH_DELTA`**
 >
 > The Wave 15 architecture is sound (CI matrix, stats engine, Jekyll portal, DMAIC ledger).
@@ -47,10 +80,10 @@ title: "Wave 16 – Governance Plan"
 ### Checklist before opening Wave 16 PR
 
 - [ ] Bump `wave` field in `docs/_data/drift_alerts.json` to `"16"`
-- [ ] Add a Wave 16 row to `docs/historical_telemetry_ledger.json`
+- [ ] Preserve the historical telemetry ledger as runtime evidence; do not hand-insert a synthetic Wave 16 row
 - [ ] Update `repo_manifest.yaml` `manifest_version` (minor bump: `1.0.0` → `1.1.0`)
-- [ ] Update `docs/index.html` portal nav link to reference this plan
-- [ ] Re-run: `pytest -v --durations=0`, `ruff check .`, `python src/pipeline.py`
+- [ ] Update the HTML producer (`src/pipeline.py`) and regenerate `docs/index.html`; do not hand-maintain generated HTML
+- [ ] Re-run: `pytest -v --durations=0`, `ruff check .`, `python -m src.pipeline`, then regenerate the governed derived surfaces
 - [ ] Confirm `docs/_data/drift_alerts.json` regenerates cleanly with `any_alert: false`
 
 ---
@@ -122,7 +155,7 @@ the Jekyll portal dashboard.
 ### Federation / bridge impact
 
 - `src/federation_bridge.py` – add `cause` field to the cherry-pick JSON emitted to `docs/federation/`
-- `docs/federation/federation_cherry_pick.json` – schema bump: add `"cause": null` default
+- `docs/federation/federation_cherry_pick.json` – generated projection; change its producer first, then regenerate with an additive `"cause": null` default if the bridge consumer still requires it
 - No breaking changes to existing consumers (additive key only)
 
 ### Portal / HTML output
@@ -139,7 +172,7 @@ the Jekyll portal dashboard.
 
 ### Acceptance criteria
 
-- [ ] `pytest` 5/5 pass on all non-telemetry lanes (Py 3.9 – 3.12, windows 3.12)
+- [ ] All collected tests pass on blocking lanes (Py 3.9 – 3.12 and Windows 3.12); do not encode a stale fixed test count
 - [ ] `ruff check .` clean (zero errors)
 - [ ] `yamllint` clean on `config/blsn_config.yaml`
 - [ ] `docs/_data/drift_alerts.json` contains `"wave": "16"` after pipeline run
@@ -167,6 +200,6 @@ the Jekyll portal dashboard.
 |---|------|-------------|----------|
 | T-01 | `tests/test_pipeline.py:20-22` | Mass-flow limit key assertions aligned to current SSOT schema | Low (passing) |
 | T-02 | `.github/workflows/…:64-67` | Review `continue-on-error` scope after pypy-3.9 stabilises | Medium |
-| T-03 | `src/pipeline.py` | Add Node.js 24 action version pins before September 2026 deprecation deadline | High |
+| T-03 | `.github/workflows/*.yml` | Reconcile GitHub Action major versions/runtime compatibility as a separate CI-governance change; this does not belong in `src/pipeline.py` | High |
 | T-04 | `docs/index.html` | Audience toggle UX: persist `data-audience` across page navigations via `localStorage` | Low |
 | T-05 | `src/stats_engine.py` | Increase `historical_ledger` rolling window from 10 to 20 runs once telemetry backlog reaches 20 entries | Low |
