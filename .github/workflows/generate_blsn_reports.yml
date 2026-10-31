@@ -8,8 +8,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   full-matrix-validation:
@@ -36,10 +34,10 @@ jobs:
 
     steps:
       - name: Checkout Repository Source
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -51,7 +49,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install --only-binary :all: Pillow || true
-          pip install pytest pytest-json-report ruff yamllint pyyaml fpdf2 plotly pandas
+          pip install pytest pytest-json-report ruff==0.16.10 yamllint pyyaml fpdf2 plotly pandas
 
       - name: Data Substrate Linting (YAML & JSON)
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
@@ -85,7 +83,7 @@ jobs:
 
       - name: Archive Pytest Telemetry Payload
         if: always() && matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pytest-telemetry-json
           path: docs/pytest_telemetry.json
@@ -119,63 +117,50 @@ jobs:
 
       - name: Archive Engineering Outputs
         if: matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: blsn-docs-and-charts
           path: docs/
 
+  # JADE deploy contract (option A): the hub reusable CI runs the test suite, then
+  # regenerates docs/ exactly as the old deploy-pages job did and builds it with the
+  # same Jekyll image actions/jekyll-build-pages@v1 runs, hashes every file into
+  # jade-manifest.json and uploads the artefact once. The hub reusable deploy
+  # promotes that artefact by digest and reads the served files back.
+  ci:
+    name: JADE CI (tests, build once, hash)
+    uses: GBOGEB/pipeline-automation-hub/.github/workflows/jade-reusable-ci.yml@77bac410de6b34afa5df665608611ad9e8db5c84
+    with:
+      python-version: '3.12'
+      install: python -m pip install --disable-pip-version-check pytest pyyaml fpdf2 plotly numpy
+      test-runner: pytest
+      test-args: -q -p no:cacheprovider tests
+      min-tests: 50
+      build-command: |
+        python -m src.pipeline
+        python src/stats_engine.py
+        python src/indexer.py
+        python src/bt_ranking.py
+        python src/jekyll_bridge.py
+        docker run --rm -v "$PWD:/github/workspace" -w /github/workspace           -e GITHUB_WORKSPACE=/github/workspace -e INPUT_SOURCE=docs -e INPUT_DESTINATION=_site           -e INPUT_BUILD_REVISION="$GITHUB_SHA" -e INPUT_VERBOSE=false -e INPUT_FUTURE=false -e INPUT_TOKEN=""           -e GITHUB_REPOSITORY="$GITHUB_REPOSITORY" -e GITHUB_API_URL="$GITHUB_API_URL"           ghcr.io/actions/jekyll-build-pages@sha256:6791ebfd912185ed59bfb5fb102664fa872496b79f87ff8b9cfba292a7345041
+        sudo chown -R "$(id -u):$(id -g)" _site
+        find _site -name '.*' -prune -exec rm -rf {} +
+        test -f _site/index.html
+      artifact-path: _site
+      artifact-name: gemini-pages
+
   deploy-pages:
     name: Deploy GitHub Pages
-    runs-on: ubuntu-latest
-    needs: full-matrix-validation
-    if: github.ref == 'refs/heads/main' && needs.full-matrix-validation.result == 'success'
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Checkout Repository Source
-        uses: actions/checkout@v4
-
-      - name: Setup Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install Publishing Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyyaml fpdf2 plotly numpy
-
-      - name: Build docs/ publish assets
-        run: python -m src.pipeline
-
-      - name: Build Statistical Engine
-        run: python src/stats_engine.py
-
-      - name: Build Repository Indexes
-        run: python src/indexer.py
-
-      - name: Build Bradley-Terry Ranking
-        run: python src/bt_ranking.py
-
-      - name: Build Jekyll Data Bridge
-        run: python src/jekyll_bridge.py
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Build Jekyll site
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./docs
-          destination: ./_site
-
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./_site
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [ci, full-matrix-validation]
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: GBOGEB/pipeline-automation-hub/.github/workflows/jade-reusable-deploy.yml@77bac410de6b34afa5df665608611ad9e8db5c84
+    with:
+      environment: production
+      target: pages
+      artifact-name: ${{ needs.ci.outputs.artifact-name }}
+      manifest-sha256: ${{ needs.ci.outputs.manifest-sha256 }}
+      tests-ran: ${{ fromJSON(needs.ci.outputs.tests-ran) }}
