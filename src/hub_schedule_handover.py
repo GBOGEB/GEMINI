@@ -36,7 +36,7 @@ def hub_schedule_manifest(*, session_id: str, generated_at: str,
     if ".." in source_path.split("/") or source_path.endswith("/"):
         raise ValueError("unsafe source path")
     if not isinstance(receipt, dict):
-        raise ValueError("receipt must be a mapping")
+        raise TypeError("receipt must be a mapping")
     if (receipt.get("schema") != SCHEDULE_SCHEMA or
             receipt.get("status") != "DECLARED_PLAN_ONLY" or
             receipt.get("authority_transfer") is not False):
