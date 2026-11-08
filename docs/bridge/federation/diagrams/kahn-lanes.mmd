@@ -1,0 +1,14 @@
+flowchart TD
+    S["D0 source inventory"] --> P["D1 pin source identities"]
+    P --> V["D2 validate package / dedupe"]
+    V --> C["CODEX: candidate patch"]
+    V --> A["ABACUS: first-red / QA"]
+    V --> M["gg_MATH: numerical proof"]
+    V --> R["DOCX: render preparation"]
+    C --> J["Join committed receipts"]
+    A --> J
+    M --> J
+    R --> J
+    J --> T["Native tests and admission"]
+    T --> G["Independent review / exact HEAD"]
+    G --> U["Versioned snapshot publication"]

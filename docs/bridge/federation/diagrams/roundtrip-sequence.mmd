@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant Agent as Gemini/Codex/Claude
+    participant Drive as Google Drive
+    participant Broker as GEMINI Broker
+    participant GH as GitHub
+    participant QA as Native CI / Reviewer
+    Agent->>Drive: Write versioned GMI proposal
+    Broker->>Drive: Authorized revision read
+    Drive-->>Broker: Bytes and object identity
+    Broker->>GH: Verify pinned refs
+    GH-->>Broker: Exact Git objects
+    alt Stale or conflicting
+      Broker-->>Drive: HOLD receipt; preserve original
+    else Valid and authorized
+      Broker->>GH: Isolated branch and draft PR
+      GH->>QA: Exact head checks and review
+      QA-->>GH: Approval if gates pass
+      GH-->>Broker: Observed authorized merge SHA
+      Broker->>Drive: Publish new immutable snapshot
+      Drive-->>Broker: Readback and revision
+    end
