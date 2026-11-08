@@ -1,12 +1,14 @@
 """GM-I-C R2-W2 offline broker: clean/three-way/conflict and fail-closed controls."""
 from __future__ import annotations
+
 import copy
 import hashlib
 import json
 import subprocess
 from pathlib import Path
-import pytest
+
 import yaml
+
 from src.proposal_broker import PROFILE, evaluate_proposal, git_blob_oid
 
 BASE_SHA = '1'*40
