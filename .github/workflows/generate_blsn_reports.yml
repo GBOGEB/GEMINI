@@ -12,7 +12,11 @@ permissions:
 jobs:
   full-matrix-validation:
     name: Run (${{ matrix.os }} - Py ${{ matrix.python-version }})
-    runs-on: ${{ matrix.os }}
+    # ubuntu-latest is Ubuntu 26.04 from runner image 20261101, and
+    # actions/setup-python has no Python 3.9 build for 26.04 (3.9.25 ships for
+    # 22.04 and 24.04 only). Run the gating 3.9 leg on 24.04 so it can set up;
+    # the job name and the matrix.os == 'ubuntu-latest' step conditions stay the same.
+    runs-on: ${{ (matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9') && 'ubuntu-24.04' || matrix.os }}
     continue-on-error: ${{ matrix.telemetry == true }}
     strategy:
       fail-fast: false
