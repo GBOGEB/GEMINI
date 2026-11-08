@@ -143,6 +143,9 @@ as Sources Root (`pythonpath = ["."]`), and set pytest as the test runner.
 
 An agent with Drive access but no GitHub access writes a bundle, its `.sha256`
 and a receipt into the lane's `OUT/` folder instead.
+An agent without local git (Drive-only) does not use `OUT/`. It returns a GMI
+proposal package instead (`PROPOSAL_BROKER.md`). Each proposer type has one
+return path, and the proposal broker rejects a package that carries a bundle.
 
 ## Windows test note
 
