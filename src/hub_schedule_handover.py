@@ -8,8 +8,11 @@ from __future__ import annotations
 
 import re
 
+from src.handover_package import canonical_manifest_digest
+
 SOURCE_REPO = "GBOGEB/pipeline-automation-hub"
 SCHEDULE_SCHEMA = "jade.iso-schedule.v1"
+SCHEDULE_METHOD = "JADE_ISO_SCHEDULE_PORTABLE_RECEIPT_V1"
 SOURCE_PREFIX = "mission-control/jade_temple/"
 _SHA = re.compile(r"[0-9a-f]{40}")
 _GMI = re.compile(r"GMI-[A-Za-z0-9_-]+")
@@ -44,8 +47,19 @@ def hub_schedule_manifest(*, session_id: str, generated_at: str,
     year = receipt.get("iso_year")
     if type(year) is not int or not (1 <= year <= 9999):
         raise ValueError("schedule iso_year must be explicit")
+    if receipt.get("generation_method") != SCHEDULE_METHOD:
+        raise ValueError("unsupported Hub generation method")
     if not isinstance(receipt.get("tasks"), dict) or not receipt["tasks"]:
         raise ValueError("a non-empty task map must have been validated by Hub")
+    if not isinstance(receipt.get("waves"), list) or not receipt["waves"]:
+        raise ValueError("Hub schedule waves are missing")
+    digest = receipt.get("receipt_sha256")
+    if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+        raise ValueError("receipt_sha256 must be an actual lowercase SHA-256 digest")
+    payload = {key: value for key, value in receipt.items() if key != "receipt_sha256"}
+    if canonical_manifest_digest(payload) != digest:
+        raise ValueError("Hub schedule receipt digest mismatch")
+    # The digest is a payload-integrity check, not Git source authentication.
     # GEMINI stores a reference, not a second copy of the Hub DAG, and cannot
     # verify its semantics without source-pinned Hub native tests.
     return {
@@ -60,6 +74,8 @@ def hub_schedule_manifest(*, session_id: str, generated_at: str,
             "source_path": source_path,
             "source_sha": source_sha,
             "schema_version": SCHEDULE_SCHEMA,
+            "generation_method": SCHEDULE_METHOD,
+            "receipt_sha256": digest,
             "source_visibility": "PUBLIC",
             "validation_status": "EXTERNAL_NATIVE_QA_PENDING",
             "owner_disposition": "NOT_APPROVED",
