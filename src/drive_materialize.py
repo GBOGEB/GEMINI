@@ -27,8 +27,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -80,11 +82,11 @@ def read_sidecar(sidecar: Path, bundle_name: str) -> str:
         raise MaterializeError(
             "SIDECAR_MISSING", f"SHA-256 sidecar not found: {sidecar}"
         )
-    lines = [
-        line.strip()
-        for line in sidecar.read_text(encoding="utf-8-sig").splitlines()
-        if line.strip()
-    ]
+    try:
+        text = sidecar.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise MaterializeError("SIDECAR_INVALID", "sidecar is not UTF-8 text") from exc
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
     if len(lines) != 1:
         raise MaterializeError(
             "SIDECAR_INVALID", "sidecar must hold exactly one non-empty line"
@@ -173,6 +175,37 @@ def check_target(target: Path, lane_dir: Path) -> None:
         raise MaterializeError(
             "TARGET_NOT_EMPTY", f"target already exists and is not empty: {resolved}"
         )
+
+
+def _force_remove(func: Any, path: str, _exc: Any) -> None:
+    """Git marks object files read-only; clear the flag and retry (needed on Windows)."""
+
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+
+def _remove_tree(path: Path) -> None:
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=_force_remove)
+    else:
+        shutil.rmtree(path, onerror=_force_remove)
+
+
+def _restore_target(target: Path, created: bool) -> None:
+    """Undo a failed clone: remove a folder this run created, or empty one that was empty."""
+
+    if not target.exists():
+        return
+    if created:
+        _remove_tree(target)
+        return
+    # check_target proved this folder was empty, so everything in it came from this run.
+    for child in target.iterdir():
+        if child.is_dir() and not child.is_symlink():
+            _remove_tree(child)
+        else:
+            os.chmod(child, stat.S_IWRITE)
+            child.unlink()
 
 
 def _git(args: list[str], code: str, cwd: Path | None = None) -> str:
@@ -269,9 +302,13 @@ def materialize(
                 cwd=target,
             )
         origin = _git(["remote", "get-url", "origin"], "ORIGIN_UNREADABLE", cwd=target)
-    except MaterializeError:
-        if created and target.exists():
-            shutil.rmtree(target, ignore_errors=True)
+    except MaterializeError as exc:
+        try:
+            _restore_target(target, created)
+        except OSError as cleanup:
+            raise MaterializeError(
+                exc.code, f"{exc} (cleanup of {target} incomplete: {cleanup})"
+            ) from exc
         raise
 
     return {
@@ -377,7 +414,9 @@ def check_lane_matrix(matrix: Any) -> list[str]:
                     f"{lane_id}: file {raw!r} must be a relative POSIX path inside the repo"
                 )
             elif state not in INACTIVE_STATES and isinstance(repo, str):
-                claims.append((repo, path, lane_id))
+                claims.append(
+                    (repo.casefold(), path, lane_id)
+                )  # GitHub names ignore case
 
     for i, (repo_a, path_a, lane_a) in enumerate(claims):
         for repo_b, path_b, lane_b in claims[i + 1 :]:

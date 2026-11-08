@@ -357,3 +357,48 @@ def test_cyclic_yaml_matrix_fails_closed(workdir: Path) -> None:
     path = workdir / "LANE_MATRIX.yaml"
     path.write_text("&a\nschema: gemini.lane_matrix.v1\nself: *a\n", encoding="utf-8")
     assert main(["check-matrix", str(path)]) == 3
+
+
+def test_undecodable_sidecar_is_classified(workdir: Path) -> None:
+    sidecar = workdir / "x.bundle.sha256"
+    sidecar.write_bytes(b"\xff\xfe\x00 not utf-8\n")
+    with pytest.raises(MaterializeError) as exc:
+        read_sidecar(sidecar, "x.bundle")
+    assert exc.value.code == "SIDECAR_INVALID"
+
+
+def test_failed_branch_removes_a_target_this_run_created(workdir: Path) -> None:
+    bundle, commit = _lane(workdir)
+    target = workdir / "local" / "lane-wt"
+    with pytest.raises(MaterializeError) as exc:
+        materialize(bundle, target, "L-TEST-01", commit, "bad..branch")
+    assert exc.value.code == "LANE_BRANCH_FAILED"
+    assert not target.exists()
+
+
+def test_failed_branch_empties_a_pre_existing_empty_target(workdir: Path) -> None:
+    bundle, commit = _lane(workdir)
+    target = workdir / "local" / "empty-wt"
+    target.mkdir(parents=True)
+    with pytest.raises(MaterializeError) as exc:
+        materialize(bundle, target, "L-TEST-01", commit, "bad..branch")
+    assert exc.value.code == "LANE_BRANCH_FAILED"
+    assert target.is_dir() and list(target.iterdir()) == []
+    receipt = _run(bundle, target, commit)  # the same target is usable again
+    assert receipt["result"] == "PASS"
+
+
+def test_repo_names_are_compared_case_insensitively() -> None:
+    matrix = _matrix()
+    matrix["lanes"].append(
+        {
+            "id": "L-GEMINI-02",
+            "repo": "gbogeb/gemini",
+            "purpose": "same repo, other casing",
+            "files": ["src/drive_materialize.py"],
+            "state": "PROPOSED",
+        }
+    )
+    assert check_lane_matrix(matrix) == [
+        "L-GEMINI-01 and L-GEMINI-02 both claim src/drive_materialize.py"
+    ]
