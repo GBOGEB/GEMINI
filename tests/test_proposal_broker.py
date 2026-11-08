@@ -83,6 +83,18 @@ def test_conflict_overlap_blocked_no_patch(tmp_path):
     assert r['changes'][0]['manual_resolution'] is True
 
 
+def test_multiple_git_merge_conflicts_are_classified(tmp_path):
+    lines=[f"line {i}\n" for i in range(40)]
+    base="".join(lines).encode()
+    head="".join((f"head {i}\n" if i in (4, 30) else line) for i,line in enumerate(lines)).encode()
+    proposed="".join((f"proposal {i}\n" if i in (4, 30) else line) for i,line in enumerate(lines)).encode()
+    c=make_case(tmp_path,base=base,head=head,proposed=proposed)
+    r=go(c)
+    assert r['disposition']=='CONFLICT',r
+    assert r['changes'][0]['classification']=='CONFLICT'
+    assert r['patch']=='' and r['branch_plan'] is None
+
+
 def test_wrong_base_blob_hold(tmp_path):
     c=make_case(tmp_path);edit_manifest(c,lambda m:m['proposal_profile']['changes'][0].update(base_blob='0'*40))
     r=go(c);assert r['disposition']=='HOLD';assert 'BASE_BLOB_MISMATCH' in str(r['errors'])
