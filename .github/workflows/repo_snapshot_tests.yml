@@ -1,0 +1,55 @@
+name: GM-I-C R2-W1 Repo Snapshot Contract Tests
+
+on:
+  pull_request:
+    paths:
+      - "src/repo_snapshot.py"
+      - "src/handover_package.py"
+      - "tests/test_repo_snapshot.py"
+      - "docs/bridge/REPO_SNAPSHOT.md"
+      - ".github/workflows/repo_snapshot_tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/repo_snapshot.py"
+      - "src/handover_package.py"
+      - "tests/test_repo_snapshot.py"
+      - ".github/workflows/repo_snapshot_tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-repo-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Assert exact source head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install bounded test dependencies
+        run: python -m pip install --disable-pip-version-check pytest PyYAML
+
+      - name: Run snapshot contract tests
+        run: python -m pytest -q tests/test_repo_snapshot.py
+
+      - name: Dogfood snapshot of this exact head
+        run: |
+          python -m src.repo_snapshot build --repo . --commit HEAD --repo-name "${{ github.repository }}" --out "$RUNNER_TEMP/snapshot"
+          python -m src.repo_snapshot verify "$RUNNER_TEMP/snapshot"
+          python -m src.repo_snapshot status "$RUNNER_TEMP/snapshot" --head "$(git rev-parse HEAD)"
+
+      - name: State authority boundary
+        run: |
+          echo "PASS here proves only the offline gmi.repo_snapshot.v1 contract."
+          echo "It does not prove IC2 Drive persistence, IC3 Google WIF, or any Drive upload."
