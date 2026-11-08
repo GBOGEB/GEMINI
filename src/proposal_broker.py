@@ -15,8 +15,8 @@ import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from src.handover_package import _load_yaml, validate_package
 from src.handover_batch import build_batch_census, load_ledger
+from src.handover_package import _load_yaml, validate_package
 
 PROFILE = "gmi.proposal_profile.v1"
 RECEIPT = "gmi.broker_receipt"
@@ -41,7 +41,7 @@ def _relative(raw: Any) -> str:
     parts = [s.lower() for s in p.parts]
     if any(s in DANGEROUS or s.endswith(SENSITIVE_SUFFIXES) for s in parts):
         raise BrokerInputError("SECRET_PATH_DENIED")
-    if any(s.startswith("id_rsa") or s.startswith("id_ed25519") or s.startswith("gha-creds-") for s in parts):
+    if any(s.startswith(("id_rsa", "id_ed25519", "gha-creds-")) for s in parts):
         raise BrokerInputError("SECRET_PATH_DENIED")
     return raw
 
