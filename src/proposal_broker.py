@@ -28,10 +28,13 @@ import argparse
 import difflib
 import hashlib
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
+import uuid
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -249,10 +252,14 @@ def _is_ancestor(repo: Path, ancestor: str, head: str) -> bool:
 
 def merge_file(head: bytes, base: bytes, proposal: bytes) -> tuple[bytes, bool]:
     """Three-way merge with ``git merge-file`` on temp copies; returns (result, clean)."""
-    with tempfile.TemporaryDirectory(prefix="gmi-broker-") as tmp:
+    # Not tempfile.TemporaryDirectory: its 0o700 mode becomes an owner-only ACL on Windows
+    # with Python 3.12.4+, and git for Windows is then refused (same cause as the test note).
+    tmp = Path(tempfile.gettempdir()) / f"gmi-broker-{uuid.uuid4().hex[:12]}"
+    os.makedirs(tmp)
+    try:
         names = []
         for name, data in (("head", head), ("base", base), ("proposal", proposal)):
-            target = Path(tmp) / name
+            target = tmp / name
             target.write_bytes(data)
             names.append(str(target))
         result = subprocess.run(
@@ -260,6 +267,8 @@ def merge_file(head: bytes, base: bytes, proposal: bytes) -> tuple[bytes, bool]:
             capture_output=True,
             check=False,
         )
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     # Exit status is the conflict count (capped at 127); a negative status means an error.
     if result.returncode < 0 or result.returncode > 127:
         raise BrokerError("MERGE_FILE_FAILED", result.stderr.decode(errors="replace").strip()[:300])
