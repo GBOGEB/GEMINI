@@ -33,6 +33,18 @@ python -m src.repo_snapshot status <dir> --head <sha>  # FRESH or STALE
 
 `verify` rejects missing, unexpected and edited files, an edited manifest, and any `.git` inside the snapshot. A snapshot whose `commit_sha` differs from the current head is `STALE`. It is labelled as stale, never compared as if it were current (REX-GMIC-R2-003).
 
+## Relation to Drive lanes (`LANES.md`, #37)
+
+Snapshots and lanes publish the same commit to two kinds of reader. Neither replaces the other.
+
+| | Repo snapshot (this contract) | Drive lane (`src/drive_materialize.py`) |
+|---|---|---|
+| Carries | Plain files plus a per-file blob-OID manifest | A full git bundle plus a `.sha256` sidecar |
+| Reader | Agents that only read Drive files (Gemini in Drive or Docs, connector consumers) | Agents with local git, which materialize a worktree outside Drive |
+| Identity | `commit_sha` in the manifest | `--expected-commit` and the `base_sha` in the lane registry |
+
+Both keep `.git` out of synced Drive folders. A snapshot of a lane's `base_sha` lets Drive-only readers see exactly what the lane started from.
+
 ## Non-claims
 
 An offline `ACCEPT` is not IC2 Drive persistence and not an IC3 WIF pass. Nothing here uploads to Drive. The hosted upload is R2-W4, which is blocked on the owner-only IC3 setup in R2-W3.
