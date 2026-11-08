@@ -1,12 +1,12 @@
 """Synthetic handover bridge negative tests; no tokens, private bids, or Drive IDs."""
+import sys
 import unittest
 from pathlib import Path
-import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from hub_schedule_handover import hub_schedule_manifest
 from handover_package import validate_manifest
+from hub_schedule_handover import hub_schedule_manifest
 
 SHA = "a" * 40
 
@@ -18,10 +18,13 @@ def receipt():
 
 
 def candidate(**over):
-    fields = dict(session_id="GMI-hub-iso-20261109", generated_at="2026-11-09T00:00:00Z",
-                  source_sha=SHA,
-                  source_path="mission-control/jade_temple/tools/iso_schedule.py",
-                  receipt=receipt())
+    fields = {
+        "session_id": "GMI-hub-iso-20261109",
+        "generated_at": "2026-11-09T00:00:00Z",
+        "source_sha": SHA,
+        "source_path": "mission-control/jade_temple/tools/iso_schedule.py",
+        "receipt": receipt(),
+    }
     fields.update(over)
     return hub_schedule_manifest(**fields)
 
