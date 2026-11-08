@@ -1,20 +1,34 @@
 """Synthetic handover bridge negative tests; no tokens, private bids, or Drive IDs."""
-import sys
 import unittest
 from pathlib import Path
 
+from src.handover_package import canonical_manifest_digest, validate_manifest
+from src.hub_schedule_handover import hub_schedule_manifest
+
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-from handover_package import validate_manifest
-from hub_schedule_handover import hub_schedule_manifest
 
 SHA = "a" * 40
 
 
 def receipt():
-    return {"schema": "jade.iso-schedule.v1", "iso_year": 2026,
-            "status": "DECLARED_PLAN_ONLY", "authority_transfer": False,
-            "tasks": {"N1": {"id": "N1"}}, "waves": [["N1"]]}
+    record = {
+        "schema": "jade.iso-schedule.v1",
+        "iso_year": 2026,
+        "generation_method": "JADE_ISO_SCHEDULE_PORTABLE_RECEIPT_V1",
+        "status": "DECLARED_PLAN_ONLY",
+        "authority_transfer": False,
+        "tasks": {
+            "N1": {
+                "id": "N1", "title": "Synthetic plan",
+                "start": "2026-11-09", "end": "2026-11-09",
+                "start_code": "w46MON", "end_code": "w46MON",
+                "kind": "milestone", "depends_on": [],
+            },
+        },
+        "waves": [["N1"]],
+    }
+    record["receipt_sha256"] = canonical_manifest_digest(record)
+    return record
 
 
 def candidate(**over):
@@ -38,6 +52,7 @@ class HubScheduleHandover(unittest.TestCase):
         self.assertEqual(m["status"], "DECLARED")
         self.assertEqual(m["source_refs"][0]["source_sha"], SHA)
         self.assertFalse(m["artifact_refs"])
+        self.assertEqual(m["source_refs"][0]["receipt_sha256"], receipt()["receipt_sha256"])
 
     def test_never_promote_hub_plan_to_verified(self):
         m = candidate()
@@ -62,6 +77,31 @@ class HubScheduleHandover(unittest.TestCase):
             r[key] = value
             with self.subTest(key=key), self.assertRaises(ValueError):
                 candidate(receipt=r)
+
+    def test_portable_digest_rejects_in_place_mutation(self):
+        record = receipt()
+        record["tasks"]["N1"]["title"] = "Modified after hash"
+        with self.assertRaisesRegex(ValueError, "digest mismatch"):
+            candidate(receipt=record)
+
+    def test_portable_digest_rejects_fabricated_or_missing_value(self):
+        for value in (None, "0" * 64, "INVALID"):
+            record = receipt()
+            if value is None:
+                del record["receipt_sha256"]
+            else:
+                record["receipt_sha256"] = value
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                candidate(receipt=record)
+
+    def test_wrong_generation_method_cannot_be_relabelled(self):
+        record = receipt()
+        record["generation_method"] = "UNRECOGNIZED_RUNTIME"
+        record["receipt_sha256"] = canonical_manifest_digest(
+            {k: v for k, v in record.items() if k != "receipt_sha256"}
+        )
+        with self.assertRaisesRegex(ValueError, "generation method"):
+            candidate(receipt=record)
 
     def test_valid_id_and_session_identity(self):
         with self.assertRaises(ValueError):
