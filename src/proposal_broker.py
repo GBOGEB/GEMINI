@@ -83,7 +83,7 @@ def _merge_text(head: bytes, base: bytes, proposed: bytes) -> tuple[str, bytes]:
                                   capture_output=True, timeout=10, check=False)
         except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
             raise BrokerInputError("THREE_WAY_TOOL_UNAVAILABLE") from exc
-        if proc.returncode not in (0, 1):
+        if proc.returncode < 0 or proc.returncode > 127:
             raise BrokerInputError("THREE_WAY_TOOL_ERROR")
         return ("THREE_WAY" if proc.returncode == 0 else "CONFLICT"), proc.stdout
 
