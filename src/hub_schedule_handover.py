@@ -59,7 +59,7 @@ def hub_schedule_manifest(*, session_id: str, generated_at: str,
         raise ValueError("receipt_sha256 must be an actual lowercase SHA-256 digest")
     payload = {key: value for key, value in receipt.items() if key != "receipt_sha256"}
     wire_format = receipt.get("canonicalization")
-    if wire_format is not None and wire_format != HUB_UTF8_WIRE:
+    if "canonicalization" in receipt and wire_format != HUB_UTF8_WIRE:
         raise ValueError("unsupported Hub canonicalization profile")
 
     if wire_format == HUB_UTF8_WIRE:

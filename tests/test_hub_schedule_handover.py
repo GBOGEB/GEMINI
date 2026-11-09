@@ -172,6 +172,15 @@ class HubScheduleHandover(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "canonicalization"):
             candidate(receipt=bad)
 
+        # Explicit null is not a legacy (absent) profile even with a valid hash.
+        null_profile = receipt()
+        null_profile["canonicalization"] = None
+        null_profile["receipt_sha256"] = canonical_manifest_digest(
+            {k: v for k, v in null_profile.items() if k != "receipt_sha256"}
+        )
+        with self.assertRaisesRegex(ValueError, "canonicalization"):
+            candidate(receipt=null_profile)
+
         bad = utf8_vector_receipt()
         bad["tasks"]["CAFE"]["title"] = "MUTATED"
         with self.assertRaisesRegex(ValueError, "digest mismatch"):
