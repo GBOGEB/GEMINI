@@ -13,6 +13,7 @@ from src.handover_package import canonical_manifest_digest
 SOURCE_REPO = "GBOGEB/pipeline-automation-hub"
 SCHEDULE_SCHEMA = "jade.iso-schedule.v1"
 SCHEDULE_METHOD = "JADE_ISO_SCHEDULE_PORTABLE_RECEIPT_V1"
+HUB_UTF8_WIRE = "JADE_CANONICAL_UTF8_JSON_V1"
 SOURCE_PREFIX = "mission-control/jade_temple/"
 _SHA = re.compile(r"[0-9a-f]{40}")
 _GMI = re.compile(r"GMI-[A-Za-z0-9_-]+")
@@ -57,7 +58,34 @@ def hub_schedule_manifest(*, session_id: str, generated_at: str,
     if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
         raise ValueError("receipt_sha256 must be an actual lowercase SHA-256 digest")
     payload = {key: value for key, value in receipt.items() if key != "receipt_sha256"}
-    if canonical_manifest_digest(payload) != digest:
+    wire_format = receipt.get("canonicalization")
+    if wire_format is not None and wire_format != HUB_UTF8_WIRE:
+        raise ValueError("unsupported Hub canonicalization profile")
+
+    if wire_format == HUB_UTF8_WIRE:
+        # Strict profile, without implementing a second digest/canonicalizer.
+        # ASCII keys and integer-only JSON values allow cross-runtime stable sorting.
+        def validate_wire(value):
+            if type(value) is dict:
+                for key, item in value.items():
+                    if type(key) is not str or not key.isascii():
+                        raise ValueError("Hub UTF-8 receipt object keys must be ASCII")
+                    validate_wire(item)
+            elif type(value) is list:
+                for item in value:
+                    validate_wire(item)
+            elif type(value) not in (str, int, bool, type(None)):
+                raise ValueError("unsupported Hub UTF-8 receipt value type")
+
+        validate_wire(payload)
+        try:
+            calculated = canonical_manifest_digest(payload, ensure_ascii=False)
+        except UnicodeEncodeError as exc:
+            raise ValueError("Hub UTF-8 receipt contains a lone surrogate") from exc
+    else:
+        # Backwards compatibility for existing unversioned GMI/Hub candidates.
+        calculated = canonical_manifest_digest(payload)
+    if calculated != digest:
         raise ValueError("Hub schedule receipt digest mismatch")
     # The digest is a payload-integrity check, not Git source authentication.
     # GEMINI stores a reference, not a second copy of the Hub DAG, and cannot
