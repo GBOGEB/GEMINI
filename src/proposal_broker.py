@@ -332,14 +332,19 @@ def _check_package_tree(package_dir: Path) -> None:
             )
 
 
-def parse_profile(manifest: dict[str, Any], package_dir: Path) -> dict[str, Any]:
-    """Validate the ``gmi.proposal_profile.v1`` part of an already-valid GMI manifest."""
+def _reject_legacy_profile_marker(manifest: dict[str, Any]) -> None:
+    """Refuse old #41 wire marker before any package or idempotency early return."""
     if "proposal_profile" in manifest:
         raise BrokerError(
             "AMBIGUOUS_LEGACY_PROFILE",
             "legacy proposal_profile is incompatible with canonical profile + proposal; "
             "no implicit migration or merged wire contracts",
         )
+
+
+def parse_profile(manifest: dict[str, Any], package_dir: Path) -> dict[str, Any]:
+    """Validate the ``gmi.proposal_profile.v1`` part of an already-valid GMI manifest."""
+    _reject_legacy_profile_marker(manifest)
     if manifest.get("profile") != PROFILE:
         raise BrokerError("NOT_A_PROPOSAL", f"manifest profile must be {PROFILE!r}")
     proposal = manifest.get("proposal")
@@ -495,6 +500,10 @@ def evaluate_proposal(
     validation = validate_package(package_dir, MANIFEST_RELATIVE)
     if validation["verdict"] == "REJECT":
         return {**result, "verdict": "REJECT", "reasons": [f"PACKAGE_INVALID: {e}" for e in validation["errors"]]}
+    try:
+        _reject_legacy_profile_marker(_load_yaml(package_dir / MANIFEST_RELATIVE))
+    except BrokerError as exc:
+        return {**result, "verdict": "REJECT", "reasons": [f"{exc.code}: {exc}"]}
     if validation["verdict"] == "DEFER":
         return {**result, "verdict": "DEFER", "reasons": [f"PACKAGE_DEFERRED: {d}" for d in validation["deferred"]]}
     try:
@@ -650,12 +659,25 @@ def broker_workspace(
             "plan": None,
             "patch": b"",
         }
+        if state not in {"DUPLICATE", "INVALID"}:
+            try:
+                _reject_legacy_profile_marker(_load_yaml(workspace / entry["package"] / MANIFEST_RELATIVE))
+            except BrokerError as exc:
+                row["reasons"] = [f"{exc.code}: {exc}"]
+                rows.append(row)
+                continue
         if state == "DUPLICATE":
             row["reasons"] = ["DUPLICATE_SESSION: more than one package in this batch declares this session_id"]
         elif state == "INVALID":
             row["reasons"] = [f"PACKAGE_INVALID: {e}" for e in entry["errors"]] or ["PACKAGE_INVALID"]
         elif state == "UNCHANGED":
-            row.update(action="SKIP", broker_verdict="ACCEPT", reasons=["ALREADY_BROKERED: same session and digest"])
+            if entry["package_verdict"] == "DEFER":
+                row.update(
+                    action="DEFER", broker_verdict="DEFER",
+                    reasons=["PACKAGE_DEFERRED: unchanged status remains deferred"],
+                )
+            else:
+                row.update(action="SKIP", broker_verdict="ACCEPT", reasons=["ALREADY_BROKERED: same session and digest"])
         elif state in PLANNABLE_STATES:
             evaluation = evaluate_proposal(workspace / entry["package"], repo, head_sha, repo_name)
             row.update(

@@ -9,8 +9,15 @@ from __future__ import annotations
 import hashlib
 
 import pytest
+import yaml
 
-from src.proposal_broker import PROFILE, BrokerError, parse_profile
+from src.proposal_broker import (
+    PROFILE,
+    BrokerError,
+    broker_workspace,
+    evaluate_proposal,
+    parse_profile,
+)
 
 
 def _manifest(tmp_path):
@@ -93,3 +100,87 @@ def test_canonical_marker_with_unknown_schema_is_still_rejected(tmp_path):
     manifest["profile"] = "gmi.proposal_profile.v2-undefined"
     with pytest.raises(BrokerError, match="manifest profile"):
         parse_profile(manifest, tmp_path)
+
+
+def _package_on_disk(tmp_path, *, legacy=True, status="DEFERRED"):
+    package_dir = tmp_path / "GMI-BOUNDARY-CANARY"
+    manifest, artifact = _manifest(package_dir)
+    manifest.update({
+        "source_agent": "synthetic-owner-proof",
+        "generated_at": "2026-11-09T00:00:00Z",
+        "status": status,
+        "scope": "source-bound negative test",
+        "source_refs": [],
+        "current_gate": "DRY_RUN_ONLY",
+        "next_action": "independent owner review",
+    })
+    if legacy:
+        manifest["proposal_profile"] = _legacy()
+    folder = package_dir / "MANIFEST"
+    folder.mkdir(parents=True)
+    (folder / "manifest.yaml").write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+    return package_dir, manifest, artifact
+
+
+def test_legacy_deferred_package_rejected_before_defer_return(tmp_path):
+    package, _, _ = _package_on_disk(tmp_path, legacy=True, status="DEFERRED")
+    verdict = evaluate_proposal(package, tmp_path, "a" * 40, "GBOGEB/GEMINI")
+    assert verdict["verdict"] == "REJECT"
+    assert "AMBIGUOUS_LEGACY_PROFILE" in str(verdict["reasons"])
+    assert verdict["patch"] == b""
+
+
+def test_unrelated_deferred_package_remains_deferred(tmp_path):
+    package, _, _ = _package_on_disk(tmp_path, legacy=False, status="DEFERRED")
+    verdict = evaluate_proposal(package, tmp_path, "a" * 40, "GBOGEB/GEMINI")
+    assert verdict["verdict"] == "DEFER"
+    assert verdict["patch"] == b""
+
+
+def test_same_digest_legacy_package_cannot_be_accepted_as_brokered(tmp_path, monkeypatch):
+    import src.proposal_broker as broker
+
+    package, manifest, _ = _package_on_disk(tmp_path, legacy=True, status="IMPLEMENTED")
+    # Simulate a prior ledger digest match explicitly. The ordinary old path returned
+    # SKIP/ACCEPT without evaluating or parsing the historical wire profile.
+    record = {
+        "package": package.name,
+        "session_id": manifest["session_id"],
+        "idempotency_state": "UNCHANGED",
+        "package_verdict": "ACCEPT",
+        "manifest_digest": "c" * 64,
+        "errors": [],
+    }
+    prior = {"schema_version": 1, "sessions": {package.name: {"manifest_digest": "c" * 64}}}
+    census = {
+        "errors": [], "batch_digest": "d" * 64, "packages": [record],
+        "updated_ledger": prior,
+    }
+    monkeypatch.setattr(broker, "_git", lambda *_args: b"a" * 40)
+    monkeypatch.setattr(broker, "build_batch_census", lambda *_args: census)
+    result = broker_workspace(tmp_path, tmp_path, "GBOGEB/GEMINI", prior_ledger=prior)
+    assert result["broker_verdict"] == "REJECT"
+    row = result["packages"][0]
+    assert row["action"] == "REJECT"
+    assert row["plan"] is None and row["patch"] == b""
+    assert "AMBIGUOUS_LEGACY_PROFILE" in str(row["reasons"])
+    assert result["updated_ledger"] == prior
+
+
+def test_same_digest_deferred_canonical_package_cannot_be_accepted(tmp_path, monkeypatch):
+    import src.proposal_broker as broker
+
+    package, manifest, _ = _package_on_disk(tmp_path, legacy=False, status="DEFERRED")
+    record = {
+        "package": package.name, "session_id": manifest["session_id"],
+        "idempotency_state": "UNCHANGED", "package_verdict": "DEFER",
+        "manifest_digest": "c" * 64, "errors": [],
+    }
+    prior = {"schema_version": 1, "sessions": {package.name: {"manifest_digest": "c" * 64}}}
+    census = {"errors": [], "batch_digest": "d" * 64, "packages": [record], "updated_ledger": prior}
+    monkeypatch.setattr(broker, "_git", lambda *_args: b"a" * 40)
+    monkeypatch.setattr(broker, "build_batch_census", lambda *_args: census)
+    result = broker_workspace(tmp_path, tmp_path, "GBOGEB/GEMINI", prior_ledger=prior)
+    assert result["broker_verdict"] == "DEFER"
+    assert result["packages"][0]["action"] == "DEFER"
+    assert result["packages"][0]["plan"] is None
