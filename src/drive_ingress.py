@@ -164,6 +164,7 @@ def get_root_folder(folder_id: str, token: str) -> dict[str, Any]:
 
 def list_children(folder_id: str, token: str) -> list[dict[str, Any]]:
     page_token: str | None = None
+    seen_page_tokens: set[str] = set()
     children: list[dict[str, Any]] = []
     while True:
         query = f"'{folder_id}' in parents and trashed = false"
@@ -185,7 +186,16 @@ def list_children(folder_id: str, token: str) -> list[dict[str, Any]]:
         next_token = payload.get("nextPageToken")
         if not next_token:
             break
-        page_token = str(next_token)
+        if not isinstance(next_token, str):
+            raise DriveIngressError(
+                "DRIVE_API_INVALID_RESPONSE", "Drive API nextPageToken must be a non-empty string"
+            )
+        if next_token in seen_page_tokens:
+            raise DriveIngressError(
+                "DRIVE_API_PAGINATION_LOOP", "Drive API repeated a previously observed nextPageToken"
+            )
+        seen_page_tokens.add(next_token)
+        page_token = next_token
     return children
 
 

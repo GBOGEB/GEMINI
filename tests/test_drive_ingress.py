@@ -169,3 +169,51 @@ def test_main_rejects_zero_item_census(monkeypatch: pytest.MonkeyPatch, tmp_path
     payload = json.loads(status.read_text(encoding="utf-8"))
     assert payload["classification"] == "CENSUS_ZERO_ITEMS"
     assert not output.exists()
+
+
+# BR-03: bounded pagination replay/invalid-token regressions.
+def test_drive_pagination_two_pages(monkeypatch: pytest.MonkeyPatch) -> None:
+    from urllib.parse import parse_qs, urlparse
+
+    seen = []
+
+    def request(url: str, token: str) -> dict:
+        page = parse_qs(urlparse(url).query).get("pageToken", [None])[0]
+        seen.append(page)
+        if page is None:
+            return {"files": [{"id": "a", "name": "a.md"}], "nextPageToken": "next-page"}
+        if page == "next-page":
+            return {"files": [{"id": "b", "name": "b.md"}]}
+        raise AssertionError("Unexpected page token")
+
+    monkeypatch.setattr(drive_ingress, "_request_json", request)
+    rows = drive_ingress.list_children("folder", "synthetic-token")
+    assert [row["id"] for row in rows] == ["a", "b"]
+    assert seen == [None, "next-page"]
+
+
+def test_drive_pagination_repeated_token_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = 0
+
+    def request(url: str, token: str) -> dict:
+        nonlocal calls
+        calls += 1
+        assert calls <= 2, "unbounded pagination must fail"
+        return {"files": [], "nextPageToken": "same-page"}
+
+    monkeypatch.setattr(drive_ingress, "_request_json", request)
+    with pytest.raises(DriveIngressError) as exc:
+        drive_ingress.list_children("folder", "synthetic-token")
+    assert exc.value.code == "DRIVE_API_PAGINATION_LOOP"
+    assert calls == 2
+
+
+def test_drive_pagination_nonstring_token_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        drive_ingress,
+        "_request_json",
+        lambda url, token: {"files": [], "nextPageToken": {"not": "opaque-string"}},
+    )
+    with pytest.raises(DriveIngressError) as exc:
+        drive_ingress.list_children("folder", "synthetic-token")
+    assert exc.value.code == "DRIVE_API_INVALID_RESPONSE"
