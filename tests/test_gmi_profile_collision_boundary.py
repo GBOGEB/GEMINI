@@ -10,7 +10,7 @@ import hashlib
 
 import pytest
 
-from src.proposal_broker import BrokerError, PROFILE, parse_profile
+from src.proposal_broker import PROFILE, BrokerError, parse_profile
 
 
 def _manifest(tmp_path):
