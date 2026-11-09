@@ -3,11 +3,27 @@
 **Purpose:** reuse the existing GEMINI `src/handover_package.py` validator for a schedule receipt **without** copying Hub's Kahn implementation, BridgeFlow's worker runtime, or QPS's private bidder evidence.
 
 - **Hub owner:** `GBOGEB/pipeline-automation-hub` `mission-control/jade_temple/tools/iso_schedule.py` (`jade.iso-schedule.v1`); the Hub owns date validation, topological layering, dependency waves, Gantt and DAG projection.
-- **Integrity binding:** Hub `portable_receipt(plan)` emits a JSON-native `jade.iso-schedule.v1` object with `generation_method: JADE_ISO_SCHEDULE_PORTABLE_RECEIPT_V1` and a SHA-256 over canonical JSON excluding `receipt_sha256`. GEMINI recomputes it using the existing `handover_package.canonical_manifest_digest`; the transfer digest is not Git SHA, a signature or proof that the schedule ran.
+- **Integrity binding:** Hub `portable_receipt(plan)` now emits `canonicalization: JADE_CANONICAL_UTF8_JSON_V1` and a SHA-256 of exactly the unsigned, sorted-ASCII-key, compact JSON payload encoded with raw UTF-8 Unicode scalar values (no BOM/newline; array order preserved). GEMINI recomputes it using the **existing** `handover_package.canonical_manifest_digest(..., ensure_ascii=False)` owner. The default `ensure_ascii=True` is unchanged for all legacy GMI callers. Unversioned old Hub candidates retain the original ASCII-escaped digest until retired with a separate governed decision. This checksum is not Git SHA, a signature or proof that the schedule ran.
 - **Related non-overlapping work:** GEMINI #38 is the merged offline repo snapshot contract and GEMINI #41 is a separate offline proposal broker. Neither their files nor the generic BridgeFlow worktree are copied into this adapter. The existing `gmi_handover_tests.yml` is owned by #41 and not changed in this PR.
 - **GEMINI owner:** `src/hub_schedule_handover.py` (thin candidate metadata map), `src/handover_package.py` (canonical schema and v1 native ACCEPT/REJECT/DEFER verdict), existing `src/drive_ingress.py` (read-only scoped Drive transport).
 - **Existing Drive worktree:** generic BridgeFlow and ARGON candidate assets remain independently governed in Google Drive. They are NOT copied into this public repository.
 - **Future consumers:** ABACUS runner, CODEX governance, gg_MATH kernels, QPS/private engineering, DOCX_RTM_Automation builder. Only use source-digest-bound receipt APIs; no unchecked authority transfer.
+
+## Compatibility DoD / DoV (source-bound)
+
+This bridge has **two noninterchangeable wire profiles**. Never guess the profile from the title contents or silently try both hashes. An absent `canonicalization` means the historical escaped-ASCII GMI digest; an explicit `JADE_CANONICAL_UTF8_JSON_V1` means raw UTF-8 with recursively sorted ASCII object keys, JSON compact separators and no Unicode normalization. Unsupported profile identifiers, non-ASCII keys, floats and lone surrogates fail closed for the versioned mode. Do not change or duplicate the GMI manifest schema or its digest owner.
+
+**Cross-language vector:** Synthetic Hub plan `CAFE`, title `Café 🔬/∆`, `2026-w46MON` through the same date, no predecessors. The versioned unsigned payload hashes to:
+
+```text
+bb7d5953a763eed0e7b9d0cd7741f7ae2c128d5305677884d44fbd8038b80c17
+```
+
+Python's legacy `ensure_ascii=True` hashes the *same* versioned record to `ddbb0ba85716d73267ca18d1cafe2fb9a3af0e378fa0ff3b6c3679704cce976b`, deliberately **not** accepted for the new profile. Independent Node.js `JSON.stringify` of recursively ASCII-sorted fields yields the UTF-8 digest above. Hub owns wire generation at [Hub #1138](https://github.com/GBOGEB/pipeline-automation-hub/pull/1138); GEMINI owns candidate transport at this adapter. Neither may claim that a matching digest certifies authenticated source, Drive ACL, executed jobs or owner approval.
+
+**Minimum DoD:** one version-selected verification branch; backwards compatibility for legacy GMI digests; positive vector; negative stale/tampered/unknown-profile/type/Unicode cases; no new Drive API, no branch push, no engineering or contract authority.
+
+**Minimum DoV:** native GEMINI tests collect >0 cases on this PR's **exact head**, verify the fixture bytes/digest against Hub's pinned source, retain existing GMI regressions, pass relevant required checks, receive independent code review after last push, and obtain owner merge admission. Until all pass, `DRAFT / NOT_APPROVED / EXTERNAL_NATIVE_QA_PENDING`. [IC3 external auth](https://github.com/GBOGEB/GEMINI/issues/12) remains separately blocked; no manual connector access substitutes for hosted WIF proof.
 
 ## Minimal use
 
