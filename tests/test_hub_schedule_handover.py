@@ -151,8 +151,10 @@ class HubScheduleHandover(unittest.TestCase):
 
     def test_legacy_manifest_digest_mode_is_unchanged(self):
         legacy = receipt()
-        self.assertEqual(candidate(receipt=legacy)["status"], "DECLARED")
+        legacy["tasks"]["N1"]["title"] = "Caf\u00e9 (legacy)"
         payload = {k: v for k, v in legacy.items() if k != "receipt_sha256"}
+        legacy["receipt_sha256"] = canonical_manifest_digest(payload)
+        self.assertEqual(candidate(receipt=legacy)["status"], "DECLARED")
         self.assertEqual(
             canonical_manifest_digest(payload),
             canonical_manifest_digest(payload, ensure_ascii=True),
@@ -160,7 +162,7 @@ class HubScheduleHandover(unittest.TestCase):
         self.assertNotEqual(
             canonical_manifest_digest(payload),
             canonical_manifest_digest(payload, ensure_ascii=False),
-        ) if any(ord(ch) > 127 for ch in str(payload)) else None
+        )
         with self.assertRaisesRegex(ValueError, "ensure_ascii"):
             canonical_manifest_digest(payload, ensure_ascii="False")
 
