@@ -103,13 +103,20 @@ def _validate_json_value(
     raise TypeError(f"{path}: non-JSON value type {type(value).__name__}")
 
 
-def canonical_manifest_digest(manifest: dict[str, Any]) -> str:
+def canonical_manifest_digest(manifest: dict[str, Any], *, ensure_ascii: bool = True) -> str:
+    """One GMI digest owner; default ASCII wire stays unchanged for all existing callers.
+
+    Hub's explicitly versioned JADE UTF-8 receipts opt into ensure_ascii=False.
+    This is byte-integrity only: never a Git source or approval attestation.
+    """
+    if type(ensure_ascii) is not bool:
+        raise ValueError("ensure_ascii must be a bool")
     _validate_json_value(manifest)
     rendered = json.dumps(
         manifest,
         sort_keys=True,
         separators=(",", ":"),
-        ensure_ascii=True,
+        ensure_ascii=ensure_ascii,
         allow_nan=False,
     ).encode("utf-8")
     return hashlib.sha256(rendered).hexdigest()

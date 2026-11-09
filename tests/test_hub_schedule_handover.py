@@ -31,6 +31,30 @@ def receipt():
     return record
 
 
+
+def utf8_vector_receipt():
+    """Cross-runtime fixed fixture independently hashed in Hub Python and Node."""
+    return {
+        "schema": "jade.iso-schedule.v1",
+        "iso_year": 2026,
+        "generation_method": "JADE_ISO_SCHEDULE_PORTABLE_RECEIPT_V1",
+        "canonicalization": "JADE_CANONICAL_UTF8_JSON_V1",
+        "status": "DECLARED_PLAN_ONLY",
+        "authority_transfer": False,
+        "tasks": {
+            "CAFE": {
+                "id": "CAFE", "title": "Caf\u00e9 \U0001f52c/\u2206",
+                "start": "2026-11-09", "end": "2026-11-09",
+                "start_code": "w46MON", "end_code": "w46MON",
+                "kind": "task", "depends_on": [],
+            },
+        },
+        "waves": [["CAFE"]],
+        "receipt_sha256": "bb7d5953a763eed0e7b9d0cd7741f7ae2c128d5305677884d44fbd8038b80c17",
+    }
+
+
+
 def candidate(**over):
     fields = {
         "session_id": "GMI-hub-iso-20261109",
@@ -107,6 +131,79 @@ class HubScheduleHandover(unittest.TestCase):
         with self.assertRaises(ValueError):
             candidate(session_id="not-GMI")
         self.assertEqual(candidate()["session_id"], "GMI-hub-iso-20261109")
+
+
+    def test_explicit_utf8_profile_accepts_hub_node_fixed_vector(self):
+        record = utf8_vector_receipt()
+        payload = {k: v for k, v in record.items() if k != "receipt_sha256"}
+        self.assertEqual(
+            canonical_manifest_digest(payload, ensure_ascii=False),
+            "bb7d5953a763eed0e7b9d0cd7741f7ae2c128d5305677884d44fbd8038b80c17",
+        )
+        self.assertNotEqual(
+            canonical_manifest_digest(payload), record["receipt_sha256"],
+            "legacy escaped-ASCII encoding must not be silently accepted",
+        )
+        result = candidate(receipt=record)
+        self.assertEqual(result["status"], "DECLARED")
+        self.assertEqual(result["source_refs"][0]["receipt_sha256"], record["receipt_sha256"])
+        self.assertEqual(result["source_refs"][0]["owner_disposition"], "NOT_APPROVED")
+
+    def test_legacy_manifest_digest_mode_is_unchanged(self):
+        legacy = receipt()
+        legacy["tasks"]["N1"]["title"] = "Caf\u00e9 (legacy)"
+        payload = {k: v for k, v in legacy.items() if k != "receipt_sha256"}
+        legacy["receipt_sha256"] = canonical_manifest_digest(payload)
+        self.assertEqual(candidate(receipt=legacy)["status"], "DECLARED")
+        self.assertEqual(
+            canonical_manifest_digest(payload),
+            canonical_manifest_digest(payload, ensure_ascii=True),
+        )
+        self.assertNotEqual(
+            canonical_manifest_digest(payload),
+            canonical_manifest_digest(payload, ensure_ascii=False),
+        )
+        with self.assertRaisesRegex(ValueError, "ensure_ascii"):
+            canonical_manifest_digest(payload, ensure_ascii="False")
+
+    def test_unsupported_profile_and_unicode_tamper_fail_closed(self):
+        bad = utf8_vector_receipt()
+        bad["canonicalization"] = "UNKNOWN_PROFILE"
+        with self.assertRaisesRegex(ValueError, "canonicalization"):
+            candidate(receipt=bad)
+
+        # Explicit null is not a legacy (absent) profile even with a valid hash.
+        null_profile = receipt()
+        null_profile["canonicalization"] = None
+        null_profile["receipt_sha256"] = canonical_manifest_digest(
+            {k: v for k, v in null_profile.items() if k != "receipt_sha256"}
+        )
+        with self.assertRaisesRegex(ValueError, "canonicalization"):
+            candidate(receipt=null_profile)
+
+        bad = utf8_vector_receipt()
+        bad["tasks"]["CAFE"]["title"] = "MUTATED"
+        with self.assertRaisesRegex(ValueError, "digest mismatch"):
+            candidate(receipt=bad)
+
+        bad = utf8_vector_receipt()
+        bad["tasks"]["CAFE"]["title"] = "Caf\u00e9 \U0001f52c/\u2206 altered"
+        with self.assertRaisesRegex(ValueError, "digest mismatch"):
+            candidate(receipt=bad)
+
+    def test_utf8_contract_rejects_ambiguous_keys_types_and_unicode(self):
+        cases = [
+            ("non-ASCII key", "ASCII", lambda r: r.update({"\u00e9": 1})),
+            ("float", "unsupported", lambda r: r.update({"unsupported_ratio": 0.5})),
+            ("lone surrogate", "lone surrogate",
+             lambda r: r["tasks"]["CAFE"].update({"title": "\ud800"})),
+        ]
+        for label, error, mutate in cases:
+            r = utf8_vector_receipt()
+            mutate(r)
+            with self.subTest(label=label), self.assertRaisesRegex(ValueError, error):
+                candidate(receipt=r)
+
 
 
 if __name__ == "__main__":

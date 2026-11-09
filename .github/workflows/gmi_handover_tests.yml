@@ -7,11 +7,14 @@ on:
       - "src/handover_batch.py"
       - "src/handover_binding.py"
       - "src/proposal_broker.py"
+      - "src/hub_schedule_handover.py"
       - "tests/test_handover_package.py"
       - "tests/test_handover_batch.py"
       - "tests/test_handover_binding.py"
       - "tests/test_proposal_broker.py"
+      - "tests/test_hub_schedule_handover.py"
       - "docs/bridge/PROPOSAL_BROKER.md"
+      - "docs/bridge/HUB_ISO_SCHEDULE_HANDOVER.md"
       - ".github/workflows/gmi_handover_tests.yml"
   push:
     branches: [main]
@@ -20,10 +23,12 @@ on:
       - "src/handover_batch.py"
       - "src/handover_binding.py"
       - "src/proposal_broker.py"
+      - "src/hub_schedule_handover.py"
       - "tests/test_handover_package.py"
       - "tests/test_handover_batch.py"
       - "tests/test_handover_binding.py"
       - "tests/test_proposal_broker.py"
+      - "tests/test_hub_schedule_handover.py"
       - ".github/workflows/gmi_handover_tests.yml"
   workflow_dispatch:
 
@@ -56,7 +61,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check pytest pyyaml
 
       - name: Compile guarded components
-        run: python -m py_compile src/handover_package.py src/handover_batch.py src/handover_binding.py src/proposal_broker.py
+        run: python -m py_compile src/handover_package.py src/handover_batch.py src/handover_binding.py src/proposal_broker.py src/hub_schedule_handover.py
 
       - name: Execute handover and proposal broker regression matrix
         run: |
@@ -64,7 +69,8 @@ jobs:
             tests/test_handover_package.py \
             tests/test_handover_batch.py \
             tests/test_handover_binding.py \
-            tests/test_proposal_broker.py
+            tests/test_proposal_broker.py \
+            tests/test_hub_schedule_handover.py
 
       - name: State authority boundary
         run: |
