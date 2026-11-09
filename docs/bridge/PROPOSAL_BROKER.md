@@ -131,6 +131,11 @@ folder (`drive_materialize.check_target`). It receives:
   <session_id>/branch_plan.json  # gmi.broker_branch_plan.v1
 ```
 
+The patch is built against the git blobs, which have LF line endings. On a Windows
+checkout with `core.autocrlf=true` the working tree has CRLF, so plain `git apply`
+fails there. Apply it to the index with `git apply --cached`, or apply it in a worktree
+with LF line endings.
+
 The branch plan names branch `broker/<session_id>`, a title, a body and `draft: true`.
 It states `pushed: false`, `github_called: false` and `drive_written: false`. Exit
 codes: `0` when no package is rejected, `1` when any package is rejected (accepted
