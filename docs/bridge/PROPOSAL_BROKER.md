@@ -1,91 +1,153 @@
-# GM-I-C R2-W2 — offline GMI proposal-ingest broker (IC7/IC8 candidate)
+# Proposal ingest broker: `gmi.proposal_profile.v1` (dry run)
 
-**Owner:** `GBOGEB/GEMINI` · **state:** offline dry-run code, draft PR / no admission · **Wave:** R2-W2 · **source:** governed Drive handover (`FEDERATED_DAG_BRIDGE_GENERIC_v0.1.0_20261108`).
+Status: `GM-I-C R2-W2 / OFFLINE DRY RUN`. Mission brief: pipeline-automation-hub
+`mission-control/grand-missions/GM_I_C_R2_BIDIRECTIONAL_BRIDGE_BRIEF_v1.md`.
 
-This is the **proposal** direction of the existing two-way bridge, *not a second Drive client or new worktree owner*. It reuses `src/handover_package.py` for the GMI package contract and `src/handover_batch.py` for batch idempotency. It does not change `src/drive_ingress.py`, `src/drive_materialize.py`, `src/repo_snapshot.py`, or the `GM-I-C` control baseline. No broker credentials or hosted dispatch are introduced. The Hub remains the control/observability owner.
+This is the **return** direction of the bridge: Drive back to GitHub. The publish
+direction (`REPO_SNAPSHOT.md`) gives Drive-only agents an exact-SHA read copy. Those
+agents cannot push, so they return a change as a GMI proposal package. The broker turns
+that package into a patch file and a draft pull-request plan, or rejects it.
 
-## Existing GMI package profile — not a new schema
+GitHub stays the source of truth. A proposal is never synced back into a branch. It
+becomes a review-gated draft PR or nothing.
 
-Use an ordinary `GMI-*/MANIFEST/manifest.yaml` with all required GMI v1 fields. Add this extension key:
+## One return path per proposer type
+
+GBOGEB/GEMINI#37 added a second return path, the lane `OUT/` bundle. The two paths do
+not overlap, and each proposer type uses exactly one:
+
+| Proposer | Has local git? | Returns through | Checked by |
+|---|---|---|---|
+| Drive-only agent (Gemini in Drive or Docs, connector consumers reading a repo snapshot) | No | A `GMI-*` package with `profile: gmi.proposal_profile.v1`, at the handover root | `src/proposal_broker.py` (this document) |
+| Agent with git but no GitHub access (works in a lane worktree) | Yes | A full git bundle, its `.sha256` and a receipt in `LANES/<lane>/OUT/` | `src/drive_materialize.py` (`LANES.md`) |
+| Agent with GitHub access | Yes | A branch and a PR directly | CI |
+
+The broker enforces the split. It rejects a proposal package that contains a `*.bundle`
+file (`LANE_BUNDLE_IN_PROPOSAL`) or any `.git` metadata (`GIT_METADATA_IN_PACKAGE`). It
+only scans `GMI-*` folders, so it never reads `LANES/`. A git-capable agent that has a
+commit should send a bundle, not flatten the commit into a proposal.
+
+## The profile
+
+`gmi.proposal_profile.v1` is a profile of the GMI package contract v1
+(`PACKAGE_CONTRACT.md`), not a new schema. The package must first pass
+`handover_package.validate_package`. The profile then adds a top-level marker and one
+section:
 
 ```yaml
-proposal_profile:
-  schema: gmi.proposal_profile.v1
-  repository: GBOGEB/GEMINI
-  base_sha: "1111111111111111111111111111111111111111" # replace with exact, independently verified SHA
-  head_sha: "2222222222222222222222222222222222222222" # replace with exact, independently verified SHA
+schema_version: 1
+session_id: GMI-PROP-0001          # must equal the package folder name; becomes broker/<session_id>
+source_agent: gemini-in-drive
+generated_at: "2026-11-09T10:00:00Z"
+status: DECLARED
+scope: README wording fix
+source_refs: []
+artifact_refs:
+  - id: chg-0
+    type: local_file               # required, not optional
+    path: CHANGES/README.md
+    sha256: "<64 hex>"             # required for change artifacts
+current_gate: BROKER_DRY_RUN
+next_action: broker
+profile: gmi.proposal_profile.v1
+proposal:
+  repo: GBOGEB/GEMINI              # must match the broker's --repo-name
+  base_sha: "<40 hex>"             # the snapshot commit_sha the agent read
+  intent: Fix the README wording.  # free text, treated as data
   changes:
-    - op: modify
-      path: docs/report.txt
-      artifact_path: ARTIFACTS/replacement.txt
-      base_blob: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" # git blob OID of base version
+    - path: README.md
+      base_blob: "<40 hex>"        # git blob OID at base_sha, or null for a new file
+      mode: replace                # replace | unified_diff
+      artifact_ref: chg-0
 ```
 
-Also list `ARTIFACTS/replacement.txt` as a **required local_file** in normal `artifact_refs`, with its measured SHA-256. The broker verifies it through the original GMI validator. `base_blob` is **Git SHA-1 blob OID** of the file at the declared base commit, not a SHA-256, and is checked against the local base snapshot. The snapshot's **commit identity itself is not proven** by these local file checks. The declared `base_sha` and `head_sha` are labels until the existing R2-W1 exact-SHA snapshot verifier attests them. Do not treat them as verified base/head refs from client input.
+`base_blob` comes straight from the snapshot manifest (`files[].git_blob_oid`), so a
+Drive-only agent can fill it without git.
 
-Only bounded UTF-8 **modify** proposals are supported in W2. New, delete, rename, binary, symlink, credential path, undeclared artifact, duplicate target, large data and untrusted adapters are held for follow-up review. A file-level collision or Git `merge-file` conflict never silently becomes a patch.
+- `replace`: the artifact holds the full new file content.
+- `unified_diff`: the artifact holds a single-file unified diff against the base blob,
+  with `--- a/<path>` (or `--- /dev/null` for a new file) and `+++ b/<path>`. The diff
+  is applied exactly: no fuzz, no offset, no renames, deletes or mode changes.
 
-## Offline CLI (no network, no GitHub writes)
+Unknown fields in `proposal:` or in a change are rejected. Unknown top-level manifest
+fields are allowed by the package contract and have no effect on the broker. v1 carries
+UTF-8 text only. File deletion is out of scope for v1.
 
-```powershell
-python -m src.proposal_broker `
-  --package "C:\handover\inbox\GMI-001" `
-  --base-root "C:\snapshots\verified-base" `
-  --head-root "C:\snapshots\verified-head" `
-  --repo "GBOGEB/GEMINI" `
-  --ledger-in "C:\handover\prior_ledger.json" `
-  --output "C:\handover\broker-dry-run.json"
-```
+## Checks, in order
 
-`--ledger-in` is optional. Nothing writes a ledger by default: `updated_ledger_candidate` is proposed only, and must **not** be persisted without owner control after a conflict, stale or rejected package. Inputs are never mutated; `git merge-file --stdout` is the only invoked subprocess, only for local text three-way simulation.
+1. **Package contract**: `validate_package`. `REJECT` or `DEFER` stops here.
+2. **Identity**: `session_id` is a safe ref component and equals the folder name.
+3. **Return path**: no `*.bundle` and no `.git` inside the package.
+4. **Profile**: fields, modes, artifact refs (required `local_file` with `sha256`).
+5. **Paths**: relative, normal form, no `..`, `\`, `:`, backtick or control
+   characters. No `.git` component in any letter case. Not deny-listed
+   (`repo_snapshot.DEFAULT_DENY`, matched case-sensitively and case-insensitively).
+   Not under `.github/workflows/`, because a draft PR still runs workflows from its head.
+6. **Repository**: `proposal.repo` equals `--repo-name`. `base_sha` exists in the
+   target and is an ancestor of the head.
+7. **Optimistic concurrency**, per change:
 
-| Disposition | Meaning | Execution gate |
+| Class | Condition | Result |
 |---|---|---|
-| `CLEAN` | Current head blob equals declared base blob; isolated patch generated | Only candidate; commit SHA and CI still gated |
-| `THREE_WAY` | Base drifted, local `git merge-file` completed without conflicts | Requires owner review of merged diff; no branch pushed |
-| `CONFLICT` | File-level text merge conflict | Patch omitted; manual resolution required |
-| `NOOP` | Proposed content equals current head | No patch/commit needed |
-| `NOOP_DUPLICATE` | Existing GMI ledger already saw the identical session manifest | No patch/commit needed; no ledger mutation |
-| `HOLD` | GMI reject/defer, bad base blob, unsafe path, conflicting session or missing tool | No branch plan, no patch |
+| `CLEAN` | `base_blob` is the blob at `base_sha` and also at head | Proposal applied as is |
+| `THREE_WAY` | `base_blob` is the blob at `base_sha`, head moved, `git merge-file` merges cleanly | Merged result |
+| `CONFLICT` | `base_blob` is not the blob at `base_sha` (`BASE_BLOB_NOT_AT_BASE_SHA`), the merge conflicts, or head created or deleted the path | No patch |
 
-`branch_plan.draft_pr_only=true` and `dispatch_disabled=true` are **not** authorization to open a PR from Drive proposals. That later step requires IC3 hosted external identity, exact-SHA binding, a least-privilege GitHub App and separate owner approval. This W2 code is a dry-run plan provider, not that app.
+The proposal takes its worst class (`CONFLICT` > `THREE_WAY` > `CLEAN`). Any
+`CONFLICT` makes the broker verdict `REJECT`. A proposal whose every change is
+already on head is rejected as `NO_EFFECTIVE_CHANGE`.
 
-## DAG, lane matrix and gates
+## Idempotency: the existing batch ledger
 
-```mermaid
-flowchart LR
-  GMI["GMI v1 proposal + SHA-256 artifacts"] --> V["Existing handover_package.validate_package"]
-  V -->|ACCEPT| L["Existing handover_batch census/ledger"]
-  V -->|REJECT/DEFER| H["HOLD + classified receipt"]
-  L -->|NEW| B["Check base_blob against offline base snapshot"]
-  L -->|UNCHANGED/CHANGED| H
-  B -->|Exact base| C["CLEAN patch"]
-  B -->|Head drift| T["git merge-file local 3-way"]
-  T -->|nonoverlap| W["THREE_WAY candidate"]
-  T -->|overlap| X["CONFLICT / omit patch"]
-  C --> O["Branch plan, draft only / NO PUSH"]
-  W --> O
-  O --> A["IC3 exact-head auth + CI + independent review: HOLD"]
+The broker runs `handover_batch.build_batch_census` on the workspace and uses its
+states. There is no second ledger.
+
+| Batch state | Broker action |
+|---|---|
+| `NEW` | Evaluate and plan |
+| `CHANGED` | Evaluate and plan; the plan records `supersedes_manifest_digest` |
+| `UNCHANGED` | `SKIP` (already brokered); no new plan |
+| `DUPLICATE` | `REJECT` every package with that session ID |
+| `INVALID` | `REJECT` |
+
+The updated ledger keeps the batch ledger's format, but it records **only** proposals
+that were planned. A rejected proposal is therefore evaluated again when it is resent,
+for example after the proposer rebases it on a fresh snapshot.
+
+## Outputs
+
+```bash
+python -m src.proposal_broker ingest <workspace> --repo . --repo-name GBOGEB/GEMINI \
+  --head origin/main --ledger-in ledger.json --ledger-out ledger.json --out <dir>
 ```
 
-| Lane | W1 predecessor | W2 now | W3 owner-gated | W4+ future |
-|---|---|---|---|---|
-| Drive ingress | `src/drive_ingress.py` | Pure local `GMI-*` package only | WIF/ACL | Hosted read |
-| Snapshot | `src/repo_snapshot.py` | Inputs declared, **not attested** | Offline verifier needed | Hosted publish |
-| Proposal | Existing GMI package | Validate + base-blob + patch/branch plan | Broker auth setup | Draft PR dispatch |
-| Ledger | Existing `handover_batch.py` | Reuse; no mutation | Source receipts | Drive return receipt |
-| Control/QA | R2-W0 Hub #1135 | Local positive/negative pytest + exact-head CI | Gate owner | Admission proof |
+`--out` must be empty and outside the workspace and outside any Google Drive synced
+folder (`drive_materialize.check_target`). It receives:
 
-## Executed tests versus production claims
+```text
+<out>/
+  BROKER_RECEIPT.json          # gmi.broker_receipt.v1: every package, verdict, reasons, ledger
+  <session_id>/proposal.patch  # git-style diff against head; `git apply` applies it
+  <session_id>/branch_plan.json  # gmi.broker_branch_plan.v1
+```
 
-- Unit tests cover clean/no-op/three-way/conflict, Git blob OID parity with `git hash-object`, idempotency new/unchanged/changed/duplicate, GMI integrity and deferred evidence, malicious paths, binary and large content, prompt-as-data, multi-change partial-patch refusal, and no repo mutation.
-- The broker has **no browser, Drive, GitHub, external worker, branch or main write**.
-- Its P1 draft PR is **not** P2 exact-head CI nor P3 merge. Even a successful local unit test cannot burn `IC3_AUTH` and does not claim QPS engineering authority.
-- The generic BridgeFlow Python worktree remains canonical **in Drive**, not copied in full into GEMINI. This adapter consumes proposed GMI artifacts, not code copied from the scheduler.
+The branch plan names branch `broker/<session_id>`, a title, a body and `draft: true`.
+It states `pushed: false`, `github_called: false` and `drive_written: false`. Exit
+codes: `0` when no package is rejected, `1` when any package is rejected (accepted
+packages still get their plan), `2` when the run itself fails.
 
-## Related sources
+## Proposal text is data
 
-- `GBOGEB/GEMINI#38` (R2-W1 exact-SHA offline snapshot), `GBOGEB/pipeline-automation-hub#1135` (R2-W0 control).
-- `GBOGEB/GEMINI#12` (IC3 WIF identity; owner only).
-- `docs/bridge/PACKAGE_CONTRACT.md`, `docs/bridge/BATCH_IDEMPOTENCY.md`, `docs/bridge/LANES.md` (R3 lane OUT return).
-- Google Drive: `https://drive.google.com/drive/folders/1dw2Zy1I-cylXYqGThLRaPJ4HSRhJZV7p`.
+Nothing in a manifest can change a verdict, the branch name, the draft flag or the push
+behaviour. The title contains only the validated session ID, a file count and the
+class. `intent` appears once, in the body, inside a fence that is longer than any
+backtick run it contains, so it cannot close the fence, and `@mentions` inside it do not
+notify anyone. Intent longer than 4000 characters is rejected. The tests check that a
+hostile intent plus a `broker_override` block produce the same plan as a benign one.
+
+## Non-claims
+
+An offline broker `ACCEPT` is not an IC3 (Google WIF) pass and not an IC7 hosted round
+trip. The broker does not download from Drive, push, open PRs or write receipts back to
+Drive. The hosted ingest workflow and the broker GitHub App are R2-W4, blocked on the
+owner-only IC3 setup in R2-W3.
