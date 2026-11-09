@@ -1,0 +1,13 @@
+flowchart LR
+    GM["Gemini / Drive client"] --> DR["Drive portable worktree / snapshots"]
+    CX["ChatGPT / Codex"] --> BK["GEMINI governed proposal broker"]
+    CL["Claude"] --> BK
+    DR --> BK
+    GH["GitHub protected refs"] --> BK
+    BK --> V["GMI and pinned source verification"]
+    V --> DAG["Kahn planner and disjoint lanes"]
+    DAG --> RUN["Isolated Git runner"]
+    RUN --> QA["Owner-native QA"]
+    QA --> PR["Draft PR + independent review"]
+    PR --> GH
+    GH --> DR

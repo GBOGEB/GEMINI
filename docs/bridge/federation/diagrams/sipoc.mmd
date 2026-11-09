@@ -1,0 +1,7 @@
+flowchart LR
+    S["SUPPLIERS: Gemini, Codex, Claude, Drive, GitHub"]
+    I["INPUTS: manifests, Drive revisions, Git refs, patches, tests"]
+    P["PROCESS: ingest → verify → Kahn DAG → QA → draft PR"]
+    O["OUTPUTS: receipts, review, governed commits, versioned snapshots"]
+    C["CUSTOMERS: owner, Hub, CODEX, ABACUS, gg_MATH, DOCX, QPS"]
+    S --> I --> P --> O --> C
