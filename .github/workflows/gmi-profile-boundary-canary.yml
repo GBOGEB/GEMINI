@@ -1,0 +1,48 @@
+name: GM-I-C R2 Profile Boundary Negative Canaries
+
+on:
+  pull_request:
+    paths:
+      - 'src/proposal_broker.py'
+      - 'tests/test_gmi_profile_collision_boundary.py'
+      - '.github/workflows/gmi-profile-boundary-canary.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/proposal_broker.py'
+      - 'tests/test_gmi_profile_collision_boundary.py'
+      - '.github/workflows/gmi-profile-boundary-canary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fail-closed-legacy-and-dual-profile:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact candidate head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Assert exact source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha || github.sha }}'
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Install narrow dependencies
+        run: python -m pip install --disable-pip-version-check pytest pyyaml
+      - name: Run legacy collision and existing broker negatives
+        run: >
+          python -m pytest -q
+          tests/test_gmi_profile_collision_boundary.py
+          tests/test_proposal_broker.py
+      - name: State no authority promotion
+        run: |
+          echo 'Legacy marker collision blocked; no implicit migration to a canonical wire profile.'
+          echo 'IC3 hosted read-only WIF and independent merge review remain separate.'
+          echo 'authority_transfer=false; formal_credit_delta=0; merge_allowed=false'

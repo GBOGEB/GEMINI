@@ -334,6 +334,12 @@ def _check_package_tree(package_dir: Path) -> None:
 
 def parse_profile(manifest: dict[str, Any], package_dir: Path) -> dict[str, Any]:
     """Validate the ``gmi.proposal_profile.v1`` part of an already-valid GMI manifest."""
+    if "proposal_profile" in manifest:
+        raise BrokerError(
+            "AMBIGUOUS_LEGACY_PROFILE",
+            "legacy proposal_profile is incompatible with canonical profile + proposal; "
+            "no implicit migration or merged wire contracts",
+        )
     if manifest.get("profile") != PROFILE:
         raise BrokerError("NOT_A_PROPOSAL", f"manifest profile must be {PROFILE!r}")
     proposal = manifest.get("proposal")
