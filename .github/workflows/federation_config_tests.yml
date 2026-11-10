@@ -4,7 +4,9 @@ on:
     paths:
       - "config/federation/**"
       - "src/federation_config.py"
+      - "src/federation_admission_probe.py"
       - "tests/test_federation_config.py"
+      - "tests/test_federation_admission_probe.py"
       - "docs/bridge/federation/**"
       - ".github/workflows/federation_config_tests.yml"
   push:
@@ -12,7 +14,9 @@ on:
     paths:
       - "config/federation/**"
       - "src/federation_config.py"
+      - "src/federation_admission_probe.py"
       - "tests/test_federation_config.py"
+      - "tests/test_federation_admission_probe.py"
   workflow_dispatch:
 permissions:
   contents: read
@@ -36,9 +40,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Compile and validate policy
         run: |
-          python -m py_compile src/federation_config.py tests/test_federation_config.py
+          python -m py_compile src/federation_config.py tests/test_federation_config.py src/federation_admission_probe.py tests/test_federation_admission_probe.py
           python -m src.federation_config
           python -m unittest discover -s tests -p 'test_federation_config.py' -v
+          python -m unittest discover -s tests -p 'test_federation_admission_probe.py' -v
+          python -m src.federation_admission_probe --expect hold config/federation/admission_observation_20261110.json
       - name: No authority transfer
         run: |
           echo "PASS here proves inert policy only."
