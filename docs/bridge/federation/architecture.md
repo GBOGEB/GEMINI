@@ -54,4 +54,4 @@ Edges represent finish-to-commit dependencies. The graph must be acyclic. Indepe
 
 The Drive generic package already provides a tested *synthetic* Kahn scheduler and offline outputs. Integrate via typed adapter only after native GEMINI validator and owner test parity; do not duplicate it. Legacy argon_bidirectional_git_drive_sync.sh contains a direct push-to-main and references a default remote not established as a governed canonical repository. Its broker's static demonstration HMAC seed and simulated COMMITTED states are **not** production authentication/provenance. Preserve these assets, disable their production use, and replace direct pushes with draft-PR admission.
 
-The two concurrent R2-W2 draft PRs use different proposed wire profiles. Treat as a contract collision requiring an independent selection decision, not as two patches to combine by filename.
+Historical R2-W2 PRs #40 and #41 proposed different wire profiles and are now both merged (verified 2026-11-10). Audit the final mainline contract, negative tests and lineage; do not assume that merge proves profile parity, IC3 or hosted transport.
