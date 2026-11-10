@@ -22,6 +22,10 @@ GEMINI is the **governed cross-agent contract and handover surface** in the GBOG
 - [Drive portable worktree](https://drive.google.com/drive/folders/1GMMHGux7x_xgZplqRk0_xEUix7gPJuo-) and [BridgeFlow generic package](https://drive.google.com/drive/folders/1dw2Zy1I-cylXYqGThLRaPJ4HSRhJZV7p) are the already-preserved source assets; no replacement worktree is created by this documentation.
 - Hub owns portfolio DAG/CI observability (default branch master); CODEX owns code-agent runtime; ABACUS owns QA and first reds; gg_MATH owns numerical methods; DOCX_RTM_Automation owns document/binary QA; cryoplant-project owns engineering authority.
 
+## F05 proof without admission authority
+
+- [Offline exact-head evidence readiness probe](ADMISSION_READINESS_PROBE_F05.md) — fail-closed on missing required GitHub protections, stale approvals, RED checks and negative canaries; never grants merge or Drive authority.
+
 ## Non-negotiable boundaries
 
 Google Drive is persistent source/handover storage, NOT a Git remote. GitHub protected branches are authoritative for reviewed Git history. SHA-256 files, Git object IDs, Drive-native revisions and CI/review approvals are different proof types.
