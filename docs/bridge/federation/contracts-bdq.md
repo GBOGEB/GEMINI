@@ -17,8 +17,8 @@
 
 - [PR #40](https://github.com/GBOGEB/GEMINI/pull/40) uses top-level profile/proposal sections with a git-object-reading offline broker and dedicated tests.
 - [PR #41](https://github.com/GBOGEB/GEMINI/pull/41) uses a nested proposal_profile plus separate snapshot roots and expands the existing GMI test workflow.
-- Both modify src/proposal_broker.py and docs/bridge/PROPOSAL_BROKER.md. They are NOT API-compatible by default. At the 2026-11-09 census, both were draft and had no submitted independent reviews; #40 checks were successful and #41's matrix was still partially in progress.
-- Maintain both as proposals until detailed source/negative test comparison identifies one canonical profile. Do not cherry-pick both files or merge without reviewer disposition.
+- Both modified src/proposal_broker.py and docs/bridge/PROPOSAL_BROKER.md. **Current 2026-11-10 observation: both PR #40 and #41 are MERGED; historical collision cannot be treated as two still-open candidates. Audit the final merged implementation and post-merge compatibility rather than choosing an open PR.**
+- Preserve original proposal lineage. Reconcile merged contract behavior with exact current-main source, tests and Hub admission records; do not declare IC3 or hosted round-trip from merge alone.
 
 ## Ordered BD queue
 
