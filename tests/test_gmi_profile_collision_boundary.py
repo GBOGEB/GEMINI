@@ -255,3 +255,23 @@ def test_manifest_removed_between_census_and_per_entry_stays_row_rejected(tmp_pa
     assert receipt["packages"][0]["action"] == "REJECT"
     assert "BROKER_MANIFEST_RACE" in str(receipt["packages"][0]["reasons"])
     assert receipt["updated_ledger"] == prior
+
+def test_multiple_legacy_packages_return_classified_rows_before_census(tmp_path, monkeypatch):
+    import shutil
+
+    import src.proposal_broker as broker
+
+    package, _, _ = _package_on_disk(tmp_path, legacy=True, status="IMPLEMENTED")
+    shutil.copytree(package, tmp_path / "GMI-ANOTHER-LEGACY")
+    monkeypatch.setattr(broker, "_git", lambda *_args: b"a" * 40)
+    monkeypatch.setattr(
+        broker, "build_batch_census",
+        lambda *_args: pytest.fail("legacy inputs must not reach artifact census"),
+    )
+    receipt = broker_workspace(tmp_path, tmp_path, "GBOGEB/GEMINI")
+    assert receipt["broker_verdict"] == "REJECT"
+    assert len(receipt["packages"]) == 2
+    assert all(row["action"] == "REJECT" for row in receipt["packages"])
+    assert all(row["patch"] == b"" and row["plan"] is None for row in receipt["packages"])
+    assert all("AMBIGUOUS_LEGACY_PROFILE" in str(row["reasons"]) for row in receipt["packages"])
+    assert receipt["updated_ledger"]["sessions"] == {}
