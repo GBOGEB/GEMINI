@@ -3,7 +3,8 @@ import copy
 import json
 import unittest
 from pathlib import Path
-from src.federation_config import PolicyError,validate
+from src.federation_config import PolicyError, validate
+
 
 DATA=json.loads((Path(__file__).resolve().parents[1]/"config/federation/governed_broker.v1.json").read_text())
 

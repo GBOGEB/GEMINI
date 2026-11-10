@@ -33,10 +33,6 @@ Neither plane automatically creates QPS engineering, release, procurement or for
 | [Issue #16](https://github.com/GBOGEB/GEMINI/issues/16) | R3 successor exact Git bundle + environment ingress | **Open producer gate** |
 | [Actions](https://github.com/GBOGEB/GEMINI/actions) | CI, handover, Drive, CodeQL and exact-environment workflows | **Executable evidence** |
 
-### Federation core: governed multi-agent architecture
-
-The [GEMINI federation core](docs/bridge/federation/README.md) documents Google Drive ↔ GitHub source authority, Codex/ChatGPT, Claude, Gemini, authentication, Kahn DAG lanes, review gates, [Mermaid diagrams](docs/bridge/federation/diagrams) and [F02 inert contract QA](docs/bridge/federation/operations.md). The architecture does not authorize hosted sync or bypass GitHub's protected PR admission.
-
 ### Navigation rule
 
 Use the following order when deciding what is authoritative:
