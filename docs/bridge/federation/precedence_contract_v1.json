@@ -1,0 +1,257 @@
+{
+  "schema": "gmi.federation_precedence.v1",
+  "snapshot": "2026-11-10",
+  "classification": "DECLARED_ARCHITECTURE_NOT_EXECUTED",
+  "authority_transfer": false,
+  "execution_permission": false,
+  "dag_owner": "GBOGEB/pipeline-automation-hub",
+  "description": "Full-scope reference graph. A real mission selects applicable nodes and must prove every selected predecessor and manual/external gate independently.",
+  "edge_semantics": "predecessor committed verified receipt before successor eligible; edge does not imply grant or automatic dispatch",
+  "nodes": [
+    {
+      "id": "S0_INTAKE",
+      "predecessors": [],
+      "owner": "GEMINI",
+      "kind": "source",
+      "label": "Capture scoped source or offline handover",
+      "evidence": "Source/session identity, scope, data-access authorization"
+    },
+    {
+      "id": "S1_PIN",
+      "predecessors": [
+        "S0_INTAKE"
+      ],
+      "owner": "GEMINI",
+      "kind": "source",
+      "label": "Pin Drive revision or Git commit and actual digest",
+      "evidence": "Provider ID/revision or Git SHA/blob IDs; actual bytes"
+    },
+    {
+      "id": "S2_VALIDATE",
+      "predecessors": [
+        "S1_PIN"
+      ],
+      "owner": "GEMINI",
+      "kind": "validation",
+      "label": "Validate GMI schema, paths, idempotency",
+      "evidence": "Fail-closed, source-bound validation receipt"
+    },
+    {
+      "id": "C0_WIRE_DECISION",
+      "predecessors": [
+        "S2_VALIDATE"
+      ],
+      "owner": "GEMINI owner",
+      "kind": "manual_gate",
+      "label": "Approve proposal-profile contract policy #44",
+      "evidence": "Recorded owner decision and compatibility fixtures"
+    },
+    {
+      "id": "L_CODEX",
+      "predecessors": [
+        "S2_VALIDATE"
+      ],
+      "owner": "CODEX",
+      "kind": "disjoint_lane",
+      "label": "Code plan and typed contract review",
+      "evidence": "Source-bound CODEX worker receipt"
+    },
+    {
+      "id": "L_ABACUS",
+      "predecessors": [
+        "S2_VALIDATE"
+      ],
+      "owner": "ABACUS",
+      "kind": "disjoint_lane",
+      "label": "Runtime and first-red negative QA",
+      "evidence": "Source-bound ABACUS QA receipt"
+    },
+    {
+      "id": "L_MATH",
+      "predecessors": [
+        "S2_VALIDATE"
+      ],
+      "owner": "gg_MATH",
+      "kind": "disjoint_lane",
+      "label": "Numerical and confidence validation",
+      "evidence": "Source-bound gg_MATH proof receipt"
+    },
+    {
+      "id": "L_DOCX",
+      "predecessors": [
+        "S2_VALIDATE"
+      ],
+      "owner": "DOCX_RTM_Automation",
+      "kind": "disjoint_lane",
+      "label": "Document and visual QA when in scope",
+      "evidence": "Source-bound binary QA receipt"
+    },
+    {
+      "id": "J0_JOIN",
+      "predecessors": [
+        "C0_WIRE_DECISION",
+        "L_CODEX",
+        "L_ABACUS",
+        "L_MATH",
+        "L_DOCX"
+      ],
+      "owner": "GEMINI",
+      "kind": "join",
+      "label": "Join required committed child receipts",
+      "evidence": "All selected predecessors signed off; hashes and exclusivity verified"
+    },
+    {
+      "id": "P0_DRAFT_PR",
+      "predecessors": [
+        "J0_JOIN"
+      ],
+      "owner": "GEMINI integration runner",
+      "kind": "candidate",
+      "label": "Open source-pinned draft PR",
+      "evidence": "Branch/ref, patch digest, recorded proposal status"
+    },
+    {
+      "id": "Q0_NATIVE_CI",
+      "predecessors": [
+        "P0_DRAFT_PR"
+      ],
+      "owner": "Repository CI",
+      "kind": "verification",
+      "label": "Native CI and negative checks on exact PR head",
+      "evidence": "Nonzero steps, required checks, exact SHA"
+    },
+    {
+      "id": "Q1_INDEPENDENT_REVIEW",
+      "predecessors": [
+        "P0_DRAFT_PR"
+      ],
+      "owner": "Independent reviewer",
+      "kind": "manual_gate",
+      "label": "Independent review of final PR head",
+      "evidence": "Completed review after last push, review SHA"
+    },
+    {
+      "id": "A0_OWNER_ADMISSION",
+      "predecessors": [
+        "Q0_NATIVE_CI",
+        "Q1_INDEPENDENT_REVIEW"
+      ],
+      "owner": "Repository owner",
+      "kind": "manual_gate",
+      "label": "Authorize governed merge without RED waiver",
+      "evidence": "Effective protection/canary evidence and explicit owner disposition"
+    },
+    {
+      "id": "M0_MERGED_READBACK",
+      "predecessors": [
+        "A0_OWNER_ADMISSION"
+      ],
+      "owner": "GitHub",
+      "kind": "verification",
+      "label": "Observe merged SHA and post-merge checks",
+      "evidence": "Real protected target ref and merge SHA readback"
+    },
+    {
+      "id": "X0_WIF_CONFIG",
+      "predecessors": [],
+      "owner": "Google/GitHub admin",
+      "kind": "external_gate",
+      "label": "Configure restricted OIDC WIF, service account and vars #12",
+      "evidence": "Observed cloud trust and repo configuration; no key"
+    },
+    {
+      "id": "X1_VIEWER_ACL",
+      "predecessors": [
+        "X0_WIF_CONFIG"
+      ],
+      "owner": "Drive folder owner",
+      "kind": "external_gate",
+      "label": "Viewer ACL on approved IC3 Drive root only",
+      "evidence": "Approved root ID and Viewer grant"
+    },
+    {
+      "id": "X2_HOSTED_READ",
+      "predecessors": [
+        "X1_VIEWER_ACL"
+      ],
+      "owner": "GEMINI hosted workflow",
+      "kind": "external_gate",
+      "label": "Hosted read-only IC3 >0-step census",
+      "evidence": "Exact run/job/SHA, scope, result and deterministic census"
+    },
+    {
+      "id": "X3_WRITE_AUTH",
+      "predecessors": [],
+      "owner": "Drive publication owner",
+      "kind": "external_gate",
+      "label": "Authorize separate Drive writer and new-version policy",
+      "evidence": "Explicit writer scope; no implication from read-only IC3"
+    },
+    {
+      "id": "Z0_VERSIONED_PUBLICATION",
+      "predecessors": [
+        "M0_MERGED_READBACK",
+        "X2_HOSTED_READ",
+        "X3_WRITE_AUTH"
+      ],
+      "owner": "Approved Drive writer",
+      "kind": "manual_gate",
+      "label": "Publish new version and verify readback",
+      "evidence": "New revision, content SHA and pointer reconciliation"
+    },
+    {
+      "id": "Z1_DOWNSTREAM",
+      "predecessors": [
+        "Z0_VERSIONED_PUBLICATION"
+      ],
+      "owner": "Independent domain consumer",
+      "kind": "manual_gate",
+      "label": "Consumer-domain acceptance if scoped",
+      "evidence": "Consumer-specific DoV; QPS authority never inherited"
+    }
+  ],
+  "expected_kahn_layers": [
+    [
+      "S0_INTAKE",
+      "X0_WIF_CONFIG",
+      "X3_WRITE_AUTH"
+    ],
+    [
+      "S1_PIN",
+      "X1_VIEWER_ACL"
+    ],
+    [
+      "S2_VALIDATE",
+      "X2_HOSTED_READ"
+    ],
+    [
+      "C0_WIRE_DECISION",
+      "L_ABACUS",
+      "L_CODEX",
+      "L_DOCX",
+      "L_MATH"
+    ],
+    [
+      "J0_JOIN"
+    ],
+    [
+      "P0_DRAFT_PR"
+    ],
+    [
+      "Q0_NATIVE_CI",
+      "Q1_INDEPENDENT_REVIEW"
+    ],
+    [
+      "A0_OWNER_ADMISSION"
+    ],
+    [
+      "M0_MERGED_READBACK"
+    ],
+    [
+      "Z0_VERSIONED_PUBLICATION"
+    ],
+    [
+      "Z1_DOWNSTREAM"
+    ]
+  ]
+}
