@@ -258,6 +258,7 @@ def test_manifest_removed_between_census_and_per_entry_stays_row_rejected(tmp_pa
 
 def test_multiple_legacy_packages_return_classified_rows_before_census(tmp_path, monkeypatch):
     import shutil
+
     import src.proposal_broker as broker
 
     package, _, _ = _package_on_disk(tmp_path, legacy=True, status="IMPLEMENTED")
