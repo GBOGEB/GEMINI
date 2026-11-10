@@ -1,0 +1,41 @@
+name: GM-I-C W1 W2 Historical Wire Corpus
+
+on:
+  pull_request:
+    paths:
+      - 'tests/test_gmi_historical_wire_corpus.py'
+      - 'tests/fixtures/gmi_wire/**'
+      - 'docs/bridge/HISTORICAL_W2_WIRE_CORPUS.md'
+      - '.github/workflows/gmi-historical-wire-corpus.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cross-wire-negative-corpus:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Confirm exact source head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Install bounded dependencies
+        run: python -m pip install --disable-pip-version-check pytest PyYAML
+      - name: Test synthetic two-wire corpus with existing production parsers
+        run: >-
+          python -m pytest -q
+          tests/test_gmi_historical_wire_corpus.py
+          tests/test_repo_snapshot.py
+          tests/test_proposal_broker.py
+          tests/test_gmi_profile_collision_boundary.py
+      - name: Assert noncompensating owner gates
+        run: |
+          echo 'Cross-wire CI is synthetic regression evidence only.'
+          echo 'CHANGED replay policy, hosted IC3, effective main protections and independent review remain separate.'

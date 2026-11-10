@@ -1,0 +1,34 @@
+{
+  "artifact_refs": [
+    {
+      "id": "chg-0",
+      "path": "ARTIFACTS/replacement.txt",
+      "required": true,
+      "sha256": "5e4a3f41b268899d20121e9ad539f3720e6ee356c6a57de2f73e73be1343cc57",
+      "type": "local_file"
+    }
+  ],
+  "current_gate": "BROKER_DRY_RUN",
+  "generated_at": "2026-11-10T00:00:00Z",
+  "next_action": "review",
+  "profile": "gmi.proposal_profile.v1",
+  "proposal": {
+    "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "changes": [
+      {
+        "artifact_ref": "chg-0",
+        "base_blob": "cccccccccccccccccccccccccccccccccccccccc",
+        "mode": "replace",
+        "path": "docs/example.txt"
+      }
+    ],
+    "intent": "Synthetic bounded regression only",
+    "repo": "GBOGEB/GEMINI"
+  },
+  "schema_version": 1,
+  "scope": "W2 cross-format fixture, not hosted evidence",
+  "session_id": "GMI-HISTORICAL-CROSSWALK",
+  "source_agent": "synthetic-regression",
+  "source_refs": [],
+  "status": "DECLARED"
+}

@@ -1,0 +1,51 @@
+{
+  "schema": "gmi.federation_admission_observation.v1",
+  "classification": "READ_ONLY_UNATTESTED",
+  "source": {
+    "repository": "GBOGEB/GEMINI",
+    "pr_number": 48,
+    "default_branch": "main",
+    "pr_head_sha": "803532158ea4ed1bff51506f6e5d7d86238d2bc5",
+    "default_sha": "d3a885ab8593cbf9af22e6fce6c64d589ad80575",
+    "author": "GBOGEB",
+    "last_push_at": null
+  },
+  "observed": {
+    "head_sha": "803532158ea4ed1bff51506f6e5d7d86238d2bc5",
+    "default_sha": "d3a885ab8593cbf9af22e6fce6c64d589ad80575",
+    "check_runs": [],
+    "reviews": [],
+    "unresolved_review_threads": null,
+    "negative_canaries": {}
+  },
+  "ruleset": {
+    "id": 26381197,
+    "enforcement": "active",
+    "target": "branch",
+    "conditions": {
+      "ref_name": {
+        "include": [
+          "~DEFAULT_BRANCH"
+        ],
+        "exclude": []
+      }
+    },
+    "bypass_actors": [],
+    "rules": [
+      {
+        "type": "deletion"
+      },
+      {
+        "type": "non_fast_forward"
+      }
+    ]
+  },
+  "provenance": {
+    "source": "GITHUB_CONNECTOR_REST_READBACK",
+    "source_urls": [
+      "https://github.com/GBOGEB/GEMINI/pull/48",
+      "https://github.com/GBOGEB/GEMINI/rules/26381197"
+    ],
+    "notes": "Historical, deliberately incomplete observation. Exact HEAD and ruleset fields were verified; checks and independent-review receipts were not copied. Empty arrays MUST NOT be interpreted as evidence that no checks ran. No signed attestation, hosted Drive access or merge approval."
+  }
+}

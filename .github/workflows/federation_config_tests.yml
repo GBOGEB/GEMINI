@@ -1,0 +1,51 @@
+name: GEMINI Federation F02 Policy QA
+on:
+  pull_request:
+    paths:
+      - "config/federation/**"
+      - "src/federation_config.py"
+      - "src/federation_admission_probe.py"
+      - "tests/test_federation_config.py"
+      - "tests/test_federation_admission_probe.py"
+      - "docs/bridge/federation/**"
+      - ".github/workflows/federation_config_tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "config/federation/**"
+      - "src/federation_config.py"
+      - "src/federation_admission_probe.py"
+      - "tests/test_federation_config.py"
+      - "tests/test_federation_admission_probe.py"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inert-contract:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout exact candidate HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Assert HEAD equality
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile and validate policy
+        run: |
+          python -m py_compile src/federation_config.py tests/test_federation_config.py src/federation_admission_probe.py tests/test_federation_admission_probe.py
+          python -m src.federation_config
+          python -m unittest discover -s tests -p 'test_federation_config.py' -v
+          python -m unittest discover -s tests -p 'test_federation_admission_probe.py' -v
+          python -m src.federation_admission_probe --expect hold config/federation/admission_observation_20261110.json
+      - name: No authority transfer
+        run: |
+          echo "PASS here proves inert policy only."
+          echo "No GitHub App authorization, Google WIF, hosted publication or merge is certified."

@@ -1,0 +1,69 @@
+{
+  "schema": "gmi.federation_config.v1",
+  "status": "INERT_POLICY_ONLY",
+  "drive_root_id": "1GMMHGux7x_xgZplqRk0_xEUix7gPJuo-",
+  "app_installation_verified": false,
+  "drive_writer_authorized": false,
+  "webhook_active": false,
+  "write_to_default_branch": false,
+  "auto_merge": false,
+  "require_draft_pr": true,
+  "require_exact_head_ci": true,
+  "require_independent_review": true,
+  "default_branches": {
+    "GBOGEB/GEMINI": "main",
+    "GBOGEB/pipeline-automation-hub": "master",
+    "GBOGEB/CODEX": "main",
+    "GBOGEB/ABACUS": "main",
+    "GBOGEB/gg_MATH": "main",
+    "GBOGEB/cryoplant-project": "main",
+    "GBOGEB/DOCX_RTM_Automation": "main"
+  },
+  "dag": [
+    {
+      "id": "intake",
+      "deps": [],
+      "resources": []
+    },
+    {
+      "id": "verify",
+      "deps": [
+        "intake"
+      ],
+      "resources": []
+    },
+    {
+      "id": "code",
+      "deps": [
+        "verify"
+      ],
+      "resources": [
+        "src/code"
+      ]
+    },
+    {
+      "id": "qa",
+      "deps": [
+        "verify"
+      ],
+      "resources": [
+        "tests"
+      ]
+    },
+    {
+      "id": "join",
+      "deps": [
+        "code",
+        "qa"
+      ],
+      "resources": []
+    },
+    {
+      "id": "draft_pr_plan",
+      "deps": [
+        "join"
+      ],
+      "resources": []
+    }
+  ]
+}
