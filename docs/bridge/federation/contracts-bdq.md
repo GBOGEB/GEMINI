@@ -1,7 +1,7 @@
 # Federation contracts and cumulative BD ledger
 
-**Source snapshot:** GEMINI main cf72ec33ff85017c997d51bc563e5708453212a1 (2026-11-10).
-**Review surfaces:** [F02 #48](https://github.com/GBOGEB/GEMINI/pull/48) and [public reader #49](https://github.com/GBOGEB/GEMINI/pull/49). Both are draft.
+**Source snapshot:** F02 branch based on GEMINI main cf72ec33ff85017c997d51bc563e5708453212a1; main has since advanced to e991d55d40b0f624f2df4539829e8d6e409d7cbf through PR #49 (2026-11-10).
+**Review surfaces:** [F02 #48](https://github.com/GBOGEB/GEMINI/pull/48) and [public reader #49](https://github.com/GBOGEB/GEMINI/pull/49). PR #49 is now MERGED, while PR #48 remains open and requires current-head admission.
 **Classification:** SOURCE_RECONCILED / NEW_HEAD_CI_REQUIRED / G1_OWNER_HOLD / IC3_OWNER_HOLD / NO_MERGE.
 
 ## What the source actually proves
@@ -9,7 +9,7 @@
 - The live GEMINI broker uses canonical #40 profile plus proposal wire. #41 proposal_profile is legacy input, rejected with AMBIGUOUS_LEGACY_PROFILE by merged PR #46. See [issue #44](https://github.com/GBOGEB/GEMINI/issues/44) and [boundary contract](../PROPOSAL_PROFILE_BOUNDARY_20261109.md). Owner P2/P3 acceptance remains open.
 - PR #47 changed Windows CRLF git apply --cached guidance. Historical #40/#41 merges must not be retrospectively credited with newer governance.
 - Original PR #48 head b60f798a5f499d22334c2c6d91315f30d35d11f2: dedicated Python 3.12 and 3.13 inert-contract checks PASSED, while Ubuntu Python 3.9 baseline failed Ruff I001, at tests/test_federation_config.py line 6. The source repair does not equal new-head CI proof.
-- PR #49 owns the public GEMINI README/BIOS/SIPOC/Kahn narrative. PR #48 README is returned to byte parity with main to avoid the overlapping edit.
+- PR #49 MERGED on 2026-11-10 at e991d55d40b0f624f2df4539829e8d6e409d7cbf and owns the public GEMINI README/BIOS/SIPOC/Kahn narrative. PR #48 did not change README relative to its original merge-base; review its merge against latest main without reverting #49.
 - The active [Main_Protect ruleset #26381197](https://github.com/GBOGEB/GEMINI/rules/26381197) was read back with only deletion and non_fast_forward; there are no required PR-review/CI contexts in that ruleset. [Issue #50](https://github.com/GBOGEB/GEMINI/issues/50) tracks the distinct owner/admin governance gate.
 
 ## Contract register
@@ -27,7 +27,7 @@
 
 ## Cumulative checklist
 
-**TOTAL 23 | DONE_SOURCE 9 | OPEN 14 (ACTIVE 3, HOLD/SCHEDULED 11).**
+**TOTAL 25 | DONE_SOURCE 9 | OPEN 16 (ACTIVE 4, HOLD/SCHEDULED 12).**
 
 Each completed item means its narrowly scoped source/checklist step is done, not that an issue or entire integration has passed DoD/DoV.
 
@@ -55,7 +55,17 @@ Each completed item means its narrowly scoped source/checklist step is done, not
 | FED-BD-14 | P0 | ACTIVE | Requalify NEW PR #48 exact-head CI after fixing original-head Ubuntu 3.9 red |
 | FED-BD-15 | P0 | OWNER_HOLD | Issue #50: effective main required checks, independent review, last-push/RED canaries |
 | FED-BD-16 | P1 | SOURCE_HOLD | Issue #16: genuine R3 successor Git bundle and exact Python environment |
-| FED-BD-17 | P0 | ACTIVE | Reconcile native PR #48/#49, cumulative ledger, check evidence and scope |
+| FED-BD-17 | P0 | ACTIVE | Reconcile current-main ancestry and native #48/#49 evidence, cumulative ledger and scope |
+| FED-BD-18 | P0 | ACTIVE | Requalify PR #48 on exact latest head against merged #49 main ancestry; prevent stale-base or stale-review admission |
+| FED-BD-19 | P0 | GOVERNANCE_HOLD | Reconcile #49 historical integration with #50 Main_Protect ruleset; independent-review/required-CI negative-canary proof not retroactively granted |
+
+## Latest F04 pulse reconciliation (10 November 2026)
+
+- Public-reader [PR #49](https://github.com/GBOGEB/GEMINI/pull/49) is **MERGED** at `e991d55d40b0f624f2df4539829e8d6e409d7cbf`; its historical admission is not proof that the active ruleset had required independent review.
+- PR #48 currently includes an exact-source, GitHub-native [five-diagram Mermaid preview](diagrams/rendered.md) and [F03 QA/readback receipt](diagrams/QA_READBACK_F03_20261110.md). Vector PDF, HTML, and 21-entry ZIP are stored inside the existing [ARGON/BridgeFlow Drive artifact folder](https://drive.google.com/drive/folders/1F6tq6QeM4EMfHrCtd1NbkoS_2lV27YTA); archive byte-for-byte Drive readback and SHA-256 **PASS**.
+- PR #48's Codex-bot review attempt failed due review-usage limits and is **not** an independent completed review; an owner-authored COMMENTED submission is also not independent approval.
+- The Ubuntu Python 3.9 Ruff I001 defect required two source edits: import spacing followed by correct standard-library/first-party grouping. Each new commit invalidates older-head CI evidence; no RED waiver.
+- Render source and Git blob checks passed. Native pinned Mermaid CLI parity remains **NOT RUN**. The F03 Graphviz semantic render is a legitimate review view, not a claim of Mermaid layout equivalence.
 
 ## Critical prerequisite DAG
 
