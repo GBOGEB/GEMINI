@@ -184,3 +184,94 @@ def test_same_digest_deferred_canonical_package_cannot_be_accepted(tmp_path, mon
     assert result["broker_verdict"] == "DEFER"
     assert result["packages"][0]["action"] == "DEFER"
     assert result["packages"][0]["plan"] is None
+
+
+def test_historical_profile_is_rejected_before_artifact_hashing(tmp_path, monkeypatch):
+    import src.proposal_broker as broker
+
+    package, _, _ = _package_on_disk(tmp_path, legacy=True, status="IMPLEMENTED")
+    monkeypatch.setattr(
+        broker, "validate_package",
+        lambda *_args, **_kwargs: pytest.fail("artifact validation must not run for legacy wire"),
+    )
+    verdict = evaluate_proposal(package, tmp_path, "a" * 40, "GBOGEB/GEMINI")
+    assert verdict["verdict"] == "REJECT"
+    assert "AMBIGUOUS_LEGACY_PROFILE" in str(verdict["reasons"])
+
+
+def test_batch_quarantines_historical_profile_before_census(tmp_path, monkeypatch):
+    import src.proposal_broker as broker
+
+    _package_on_disk(tmp_path, legacy=True, status="IMPLEMENTED")
+    monkeypatch.setattr(broker, "_git", lambda *_args: b"a" * 40)
+    monkeypatch.setattr(
+        broker, "build_batch_census",
+        lambda *_args: pytest.fail("legacy artifact census must not run"),
+    )
+    receipt = broker_workspace(tmp_path, tmp_path, "GBOGEB/GEMINI")
+    assert receipt["broker_verdict"] == "REJECT"
+    assert "AMBIGUOUS_LEGACY_PROFILE" in str(receipt["errors"])
+    assert receipt["updated_ledger"]["sessions"] == {}
+    assert receipt["pushed"] is False
+
+
+def test_malformed_manifest_preserves_classified_invalid_census(tmp_path, monkeypatch):
+    import src.proposal_broker as broker
+
+    package, _, _ = _package_on_disk(tmp_path, legacy=False, status="IMPLEMENTED")
+    (package / "MANIFEST" / "manifest.yaml").write_text("not: [valid", encoding="utf-8")
+    monkeypatch.setattr(broker, "_git", lambda *_args: b"a" * 40)
+    receipt = broker_workspace(tmp_path, tmp_path, "GBOGEB/GEMINI")
+    assert receipt["broker_verdict"] == "REJECT"
+    assert receipt["pushed"] is False
+    assert receipt["updated_ledger"]["sessions"] == {}
+
+
+def test_manifest_removed_between_census_and_per_entry_stays_row_rejected(tmp_path, monkeypatch):
+    import src.proposal_broker as broker
+
+    package, manifest, _ = _package_on_disk(tmp_path, legacy=False, status="IMPLEMENTED")
+    row = {
+        "package": package.name,
+        "session_id": manifest["session_id"],
+        "idempotency_state": "UNCHANGED",
+        "package_verdict": "ACCEPT",
+        "manifest_digest": "c" * 64,
+        "errors": [],
+    }
+    prior = {"schema_version": 1, "sessions": {package.name: {"manifest_digest": "c" * 64}}}
+
+    def delete_manifest_on_census(*_args):
+        (package / "MANIFEST" / "manifest.yaml").unlink()
+        return {
+            "errors": [], "batch_digest": "d" * 64,
+            "packages": [row], "updated_ledger": prior,
+        }
+
+    monkeypatch.setattr(broker, "_git", lambda *_args: b"a" * 40)
+    monkeypatch.setattr(broker, "build_batch_census", delete_manifest_on_census)
+    receipt = broker_workspace(tmp_path, tmp_path, "GBOGEB/GEMINI", prior_ledger=prior)
+    assert receipt["broker_verdict"] == "REJECT"
+    assert receipt["packages"][0]["action"] == "REJECT"
+    assert "BROKER_MANIFEST_RACE" in str(receipt["packages"][0]["reasons"])
+    assert receipt["updated_ledger"] == prior
+
+def test_multiple_legacy_packages_return_classified_rows_before_census(tmp_path, monkeypatch):
+    import shutil
+
+    import src.proposal_broker as broker
+
+    package, _, _ = _package_on_disk(tmp_path, legacy=True, status="IMPLEMENTED")
+    shutil.copytree(package, tmp_path / "GMI-ANOTHER-LEGACY")
+    monkeypatch.setattr(broker, "_git", lambda *_args: b"a" * 40)
+    monkeypatch.setattr(
+        broker, "build_batch_census",
+        lambda *_args: pytest.fail("legacy inputs must not reach artifact census"),
+    )
+    receipt = broker_workspace(tmp_path, tmp_path, "GBOGEB/GEMINI")
+    assert receipt["broker_verdict"] == "REJECT"
+    assert len(receipt["packages"]) == 2
+    assert all(row["action"] == "REJECT" for row in receipt["packages"])
+    assert all(row["patch"] == b"" and row["plan"] is None for row in receipt["packages"])
+    assert all("AMBIGUOUS_LEGACY_PROFILE" in str(row["reasons"]) for row in receipt["packages"])
+    assert receipt["updated_ledger"]["sessions"] == {}
