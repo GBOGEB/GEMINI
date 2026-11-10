@@ -55,6 +55,14 @@ def audit(snapshot):
     reasons = []
     head = source.get("pr_head_sha")
     default = source.get("default_sha")
+    source_author = source.get("author")
+    author_known = (
+        isinstance(source_author, str)
+        and bool(source_author)
+        and source_author == source_author.strip()
+    )
+    if not author_known:
+        reasons.append("PR_AUTHOR_IDENTITY_UNPROVEN")
     if source.get("repository") != "GBOGEB/GEMINI" or source.get("default_branch") != "main":
         reasons.append("WRONG_SOURCE_OWNER")
     pr_number = source.get("pr_number")
@@ -70,8 +78,11 @@ def audit(snapshot):
     if ruleset.get("enforcement") != "active" or ruleset.get("target") != "branch":
         reasons.append("RULESET_NOT_ACTIVE")
     conditions = _map(ruleset.get("conditions"))
-    included = _array(_map(conditions.get("ref_name")).get("include"))
-    if "~DEFAULT_BRANCH" not in included:
+    ref_names = _map(conditions.get("ref_name"))
+    included = _array(ref_names.get("include"))
+    # This offline probe does not implement GitHub's ruleset pattern matcher.
+    # Any excluded or unreadable scope needs an effective-rule readback first.
+    if "~DEFAULT_BRANCH" not in included or ref_names.get("exclude") != []:
         reasons.append("RULESET_SCOPE_UNPROVEN")
     if ruleset.get("bypass_actors") != []:
         reasons.append("BYPASS_POLICY_UNPROVEN")
@@ -127,22 +138,60 @@ def audit(snapshot):
         steps = check.get("steps_count")
         if not isinstance(steps, int) or isinstance(steps, bool) or steps < 1:
             reasons.append("REQUIRED_CONTEXT_NONZERO_STEPS_UNPROVEN:" + context)
-        if "integration_id" in entry and entry["integration_id"] != check.get("integration_id"):
+        provider = entry.get("integration_id")
+        observed_provider = check.get("integration_id")
+        provider_known = isinstance(provider, int) and not isinstance(provider, bool) and provider > 0
+        observed_provider_known = (
+            isinstance(observed_provider, int)
+            and not isinstance(observed_provider, bool)
+            and observed_provider > 0
+        )
+        if not provider_known or not observed_provider_known:
+            reasons.append("REQUIRED_CONTEXT_PROVIDER_UNPROVEN:" + context)
+        elif provider != observed_provider:
             reasons.append("REQUIRED_CONTEXT_PROVIDER_MISMATCH:" + context)
 
     last_push = _time(source.get("last_push_at"))
     if last_push is None:
         reasons.append("LAST_PUSH_TIME_UNPROVEN")
     reviewers = set()
+    decisions = {}
     for review in _array(evidence.get("reviews")):
         if not isinstance(review, dict):
+            reasons.append("REVIEW_DECISION_UNREADABLE")
+            continue
+        state = review.get("state")
+        if not isinstance(state, str) or state not in {
+            "APPROVED", "CHANGES_REQUESTED", "DISMISSED", "COMMENTED", "PENDING"
+        }:
+            reasons.append("REVIEW_DECISION_STATE_UNPROVEN")
+            continue
+        if state in {"COMMENTED", "PENDING"}:
             continue
         author = review.get("author")
         when = _time(review.get("submitted_at"))
-        if (review.get("state") == "APPROVED" and isinstance(author, str)
-                and author and author != source.get("author")
+        if not isinstance(author, str) or not author or author != author.strip():
+            reasons.append("REVIEWER_IDENTITY_UNPROVEN")
+            continue
+        if when is None:
+            reasons.append("REVIEW_DECISION_TIME_UNPROVEN")
+            continue
+        decisions.setdefault(author.casefold(), []).append((when, review))
+    for author, history in decisions.items():
+        latest_time = max(when for when, _ in history)
+        latest = [review for when, review in history if when == latest_time]
+        signatures = {(review.get("state"), str(review.get("commit_id"))) for review in latest}
+        if len(signatures) != 1:
+            reasons.append("REVIEW_DECISION_AMBIGUOUS")
+            continue
+        review = latest[0]
+        if review.get("state") == "CHANGES_REQUESTED":
+            reasons.append("REVIEW_CHANGES_REQUESTED")
+            continue
+        if (review.get("state") == "APPROVED" and author_known
+                and author != source_author.casefold()
                 and review.get("commit_id") == head
-                and when is not None and last_push is not None and when >= last_push):
+                and last_push is not None and latest_time >= last_push):
             reviewers.add(author)
     if required_reviews and len(reviewers) < required_reviews:
         reasons.append("INDEPENDENT_CURRENT_HEAD_APPROVAL_MISSING")
