@@ -651,12 +651,34 @@ def broker_workspace(
         return {**receipt, "errors": [f"HEAD_UNRESOLVED: {exc}"]}
     # The census validates and hashes artifacts; quarantine historical wire
     # formats before that expensive or untrusted I/O can begin.
-    try:
-        for package in sorted(workspace.glob("GMI-*")):
-            if package.is_dir():
-                _preflight_legacy_package(package)
-    except BrokerError as exc:
-        return {**receipt, "head_sha": head_sha, "errors": [f"{exc.code}: {exc}"]}
+    preflight_rejections: list[dict[str, Any]] = []
+    for package in sorted(workspace.glob("GMI-*")):
+        if not package.is_dir():
+            continue
+        try:
+            _preflight_legacy_package(package)
+        except BrokerError as exc:
+            reason = f"{exc.code}: {exc}"
+            preflight_rejections.append({
+                "package": package.name,
+                "session_id": package.name,  # unverified folder claim; no artifact read
+                "idempotency_state": "INVALID",
+                "package_verdict": "REJECT",
+                "manifest_digest": None,
+                "action": "REJECT",
+                "broker_verdict": "REJECT",
+                "concurrency": None,
+                "changes": [],
+                "reasons": [reason],
+                "plan": None,
+                "patch": b"",
+            })
+    if preflight_rejections:
+        return {
+            **receipt, "head_sha": head_sha,
+            "packages": preflight_rejections,
+            "errors": [reason for row in preflight_rejections for reason in row["reasons"]],
+        }
     census = build_batch_census(workspace, ledger)
     receipt["head_sha"] = head_sha
     receipt["batch_digest"] = census["batch_digest"]
