@@ -1,0 +1,26 @@
+{
+  "authority_transfer": false,
+  "canonical_wire": {
+    "pr": 40,
+    "source_head_sha": "d875206aa51bf7617edd528e3677d085bbb2f5a7"
+  },
+  "changed_replay_owner_decision": "PENDING",
+  "claims": [
+    "W2_SCHEMA_SHAPE_NEGATIVE",
+    "W2_CANONICAL_ARTIFACT_PARSE",
+    "MANIFEST_DIGEST_INTEGRITY_ONLY"
+  ],
+  "historical_wire": {
+    "pr": 41,
+    "source_head_sha": "e8481490ffa1ac3f9f037cab1feeac3a4ff47c1e"
+  },
+  "not_claimed": [
+    "W3",
+    "IC3",
+    "HOSTED_AUTH",
+    "OWNER_PROTOCOL_ACCEPTANCE",
+    "MERGE_ADMISSION"
+  ],
+  "schema": "gmi.w2.synthetic_historical_wire_corpus.v1",
+  "synthetic_fixtures": true
+}
