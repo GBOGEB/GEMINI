@@ -35,6 +35,8 @@ import subprocess
 import sys
 import tempfile
 import uuid
+
+import yaml
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -342,6 +344,19 @@ def _reject_legacy_profile_marker(manifest: dict[str, Any]) -> None:
         )
 
 
+def _preflight_legacy_package(package_dir: Path) -> None:
+    """Inspect only the manifest, before reading or hashing any change artifacts.
+
+    Malformed or vanished manifests are handled by the ordinary package validator,
+    while a valid historical wire marker is a hard stop regardless of idempotency.
+    """
+    try:
+        manifest = _load_yaml(package_dir / MANIFEST_RELATIVE)
+    except (OSError, TypeError, ValueError, yaml.YAMLError):
+        return  # Existing canonical package validation classifies bad manifests.
+    _reject_legacy_profile_marker(manifest)
+
+
 def parse_profile(manifest: dict[str, Any], package_dir: Path) -> dict[str, Any]:
     """Validate the ``gmi.proposal_profile.v1`` part of an already-valid GMI manifest."""
     _reject_legacy_profile_marker(manifest)
@@ -497,13 +512,13 @@ def evaluate_proposal(
         "intent": None,
         "reasons": [],
     }
+    try:
+        _preflight_legacy_package(package_dir)
+    except BrokerError as exc:
+        return {**result, "verdict": "REJECT", "reasons": [f"{exc.code}: {exc}"]}
     validation = validate_package(package_dir, MANIFEST_RELATIVE)
     if validation["verdict"] == "REJECT":
         return {**result, "verdict": "REJECT", "reasons": [f"PACKAGE_INVALID: {e}" for e in validation["errors"]]}
-    try:
-        _reject_legacy_profile_marker(_load_yaml(package_dir / MANIFEST_RELATIVE))
-    except BrokerError as exc:
-        return {**result, "verdict": "REJECT", "reasons": [f"{exc.code}: {exc}"]}
     if validation["verdict"] == "DEFER":
         return {**result, "verdict": "DEFER", "reasons": [f"PACKAGE_DEFERRED: {d}" for d in validation["deferred"]]}
     try:
@@ -634,6 +649,14 @@ def broker_workspace(
         head_sha = _git(repo, "rev-parse", "--verify", f"{head}^{{commit}}").decode().strip()
     except SnapshotError as exc:
         return {**receipt, "errors": [f"HEAD_UNRESOLVED: {exc}"]}
+    # The census validates and hashes artifacts; quarantine historical wire
+    # formats before that expensive or untrusted I/O can begin.
+    try:
+        for package in sorted(workspace.glob("GMI-*")):
+            if package.is_dir():
+                _preflight_legacy_package(package)
+    except BrokerError as exc:
+        return {**receipt, "head_sha": head_sha, "errors": [f"{exc.code}: {exc}"]}
     census = build_batch_census(workspace, ledger)
     receipt["head_sha"] = head_sha
     receipt["batch_digest"] = census["batch_digest"]
@@ -662,8 +685,11 @@ def broker_workspace(
         if state not in {"DUPLICATE", "INVALID"}:
             try:
                 _reject_legacy_profile_marker(_load_yaml(workspace / entry["package"] / MANIFEST_RELATIVE))
-            except BrokerError as exc:
-                row["reasons"] = [f"{exc.code}: {exc}"]
+            except (BrokerError, OSError, TypeError, ValueError, yaml.YAMLError) as exc:
+                reason = f"{exc.code}: {exc}" if isinstance(exc, BrokerError) else (
+                    f"BROKER_MANIFEST_RACE: {type(exc).__name__}"
+                )
+                row["reasons"] = [reason]
                 rows.append(row)
                 continue
         if state == "DUPLICATE":
