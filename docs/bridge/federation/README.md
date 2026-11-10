@@ -29,4 +29,4 @@ No universal AI token, credentials in Drive, direct default-branch push, automat
 
 The legacy Drive shell script has a direct push-to-main mode and the legacy broker has hard-coded demonstration signing material and simulated peer states: classify both LEGACY_ADAPTER_HOLD, preserve originals, do not run as production sync.
 
-Competing GEMINI R2-W2 offline broker drafts [PR #40](https://github.com/GBOGEB/GEMINI/pull/40) and [PR #41](https://github.com/GBOGEB/GEMINI/pull/41) change the same files with incompatible proposal profiles. Neither is selected by this release.
+Historical GEMINI R2-W2 broker PRs [#40](https://github.com/GBOGEB/GEMINI/pull/40) and [#41](https://github.com/GBOGEB/GEMINI/pull/41) are now **MERGED**, as observed on 2026-11-10. Their source-contract compatibility and hosted IC3/round-trip proof remain separate reconciliation gates. See [F02 operating procedure](operations.md) and [inert policy](../../../config/federation/governed_broker.v1.json).
