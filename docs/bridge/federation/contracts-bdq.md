@@ -27,7 +27,7 @@
 
 ## Cumulative checklist
 
-**TOTAL 25 | DONE_SOURCE 9 | OPEN 16 (ACTIVE 4, HOLD/SCHEDULED 12).**
+**TOTAL 26 | DONE_SOURCE 9 | OPEN 17 (ACTIVE 5, HOLD/SCHEDULED 12).**
 
 Each completed item means its narrowly scoped source/checklist step is done, not that an issue or entire integration has passed DoD/DoV.
 
@@ -58,12 +58,15 @@ Each completed item means its narrowly scoped source/checklist step is done, not
 | FED-BD-17 | P0 | ACTIVE | Reconcile current-main ancestry and native #48/#49 evidence, cumulative ledger and scope |
 | FED-BD-18 | P0 | ACTIVE | Requalify PR #48 on exact latest head against merged #49 main ancestry; prevent stale-base or stale-review admission |
 | FED-BD-19 | P0 | GOVERNANCE_HOLD | Reconcile #49 historical integration with #50 Main_Protect ruleset; independent-review/required-CI negative-canary proof not retroactively granted |
+| FED-BD-20 | P0 | ACTIVE_DISJOINT | [PR #52](https://github.com/GBOGEB/GEMINI/pull/52) owns native main baseline first-red: R2-W2 same-digest legacy profile must reject with a per-package receipt without artifact hashing; exact-head Python 3.9 regression and independent review required. Do not patch broker in #48 |
 
 ## Latest F04 pulse reconciliation (10 November 2026)
 
 - Public-reader [PR #49](https://github.com/GBOGEB/GEMINI/pull/49) is **MERGED** at `e991d55d40b0f624f2df4539829e8d6e409d7cbf`; its historical admission is not proof that the active ruleset had required independent review.
 - PR #48 currently includes an exact-source, GitHub-native [five-diagram Mermaid preview](diagrams/rendered.md) and [F03 QA/readback receipt](diagrams/QA_READBACK_F03_20261110.md). Vector PDF, HTML, and 21-entry ZIP are stored inside the existing [ARGON/BridgeFlow Drive artifact folder](https://drive.google.com/drive/folders/1F6tq6QeM4EMfHrCtd1NbkoS_2lV27YTA); archive byte-for-byte Drive readback and SHA-256 **PASS**.
 - PR #48's Codex-bot review attempt failed due review-usage limits and is **not** an independent completed review; an owner-authored COMMENTED submission is also not independent approval.
+- **Independent inherited first-red:** current main `e991d55d40b0f624f2df4539829e8d6e409d7cbf` native Ubuntu Python 3.9 [job 129977729760](https://github.com/GBOGEB/GEMINI/actions/runs/42858438906/job/129977729760) reports 187 PASS / 1 FAIL in `test_same_digest_legacy_package_cannot_be_accepted_as_brokered`: `IndexError` at `tests/test_gmi_profile_collision_boundary.py:163` because `broker_workspace(...)["packages"]` is empty. PR #48 later recorded the same first-red with 201 PASS / 1 FAIL; its 14 inert-policy tests passed. This is a W2 broker source/receipt regression, **not** an F02 configuration failure. Dedicated draft [PR #52](https://github.com/GBOGEB/GEMINI/pull/52) owns the disjoint repair; current main remains RED until genuinely qualified.
+- **Do not merge #48 on full-red baseline or silently cherry-pick #52**; rebase/qualification must follow the owner-reviewed #52 repair (or an explicitly governed equivalent) and independent exact-head review.
 - The Ubuntu Python 3.9 Ruff I001 defect required two source edits: import spacing followed by correct standard-library/first-party grouping. Each new commit invalidates older-head CI evidence; no RED waiver.
 - Render source and Git blob checks passed. Native pinned Mermaid CLI parity remains **NOT RUN**. The F03 Graphviz semantic render is a legitimate review view, not a claim of Mermaid layout equivalence.
 
