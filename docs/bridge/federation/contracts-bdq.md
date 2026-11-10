@@ -1,8 +1,8 @@
 # Federation contracts and cumulative BD ledger
 
-**Source snapshot:** F02 branch based on GEMINI main cf72ec33ff85017c997d51bc563e5708453212a1; main has since advanced to e991d55d40b0f624f2df4539829e8d6e409d7cbf through PR #49 (2026-11-10).
+**Source snapshot:** GEMINI main d3a885ab8593cbf9af22e6fce6c64d589ad80575 (merged #49 public reader and #52 legacy receipt repair). F05 PR #48 source reconciliation merge 803532158ea4ed1bff51506f6e5d7d86238d2bc5 has parents d44a52295bb411e8a8eb1a390f0039026a576fbe and d3a885ab8593cbf9af22e6fce6c64d589ad80575. Newer F05 probe commits require their own exact-head CI.
 **Review surfaces:** [F02 #48](https://github.com/GBOGEB/GEMINI/pull/48) and [public reader #49](https://github.com/GBOGEB/GEMINI/pull/49). PR #49 is now MERGED, while PR #48 remains open and requires current-head admission.
-**Classification:** SOURCE_RECONCILED / NEW_HEAD_CI_REQUIRED / G1_OWNER_HOLD / IC3_OWNER_HOLD / NO_MERGE.
+**Classification:** F05_SOURCE_CONVERGED / OFFLINE_ADMISSION_PROBE_ADDED / EXACT_HEAD_CI_PENDING / G1_OWNER_HOLD / IC3_OWNER_HOLD / NO_MERGE.
 
 ## What the source actually proves
 
@@ -27,7 +27,7 @@
 
 ## Cumulative checklist
 
-**TOTAL 26 | DONE_SOURCE 9 | OPEN 17 (ACTIVE 5, HOLD/SCHEDULED 12).**
+**TOTAL 30 | DONE_SOURCE 13 | OPEN 17 (ACTIVE 4, HOLD/SCHEDULED 13).**
 
 Each completed item means its narrowly scoped source/checklist step is done, not that an issue or entire integration has passed DoD/DoV.
 
@@ -55,10 +55,14 @@ Each completed item means its narrowly scoped source/checklist step is done, not
 | FED-BD-14 | P0 | ACTIVE | Requalify NEW PR #48 exact-head CI after fixing original-head Ubuntu 3.9 red |
 | FED-BD-15 | P0 | OWNER_HOLD | Issue #50: effective main required checks, independent review, last-push/RED canaries |
 | FED-BD-16 | P1 | SOURCE_HOLD | Issue #16: genuine R3 successor Git bundle and exact Python environment |
-| FED-BD-17 | P0 | ACTIVE | Reconcile current-main ancestry and native #48/#49 evidence, cumulative ledger and scope |
+| FED-BD-17 | P0 | DONE_SOURCE | Verify #48 source/PR #49/#52 lineage, disjoint 10-path F02 overlay vs 8-path main delta, two-parent commit 80353215 and intact main tree |
 | FED-BD-18 | P0 | ACTIVE | Requalify PR #48 on exact latest head against merged #49 main ancestry; prevent stale-base or stale-review admission |
 | FED-BD-19 | P0 | GOVERNANCE_HOLD | Reconcile #49 historical integration with #50 Main_Protect ruleset; independent-review/required-CI negative-canary proof not retroactively granted |
-| FED-BD-20 | P0 | ACTIVE_DISJOINT | [PR #52](https://github.com/GBOGEB/GEMINI/pull/52) owns native main baseline first-red: R2-W2 same-digest legacy profile must reject with a per-package receipt without artifact hashing; exact-head Python 3.9 regression and independent review required. Do not patch broker in #48 |
+| FED-BD-20 | P0 | DONE_SOURCE | [PR #52](https://github.com/GBOGEB/GEMINI/pull/52) merged into main d3a88515; R2-W2 per-package legacy REJECT receipts restored, exact-main broker/negative/BLSN 16/16 checks SUCCESS. Historical independent review deficit remains NEW BD-23; no retroactive acceptance |
+| FED-BD-21 | P0 | DONE_SOURCE | Implement F05 offline admission evidence probe and 21 positive/adversarial unit tests; historical source readback correctly produces HOLD, never executes or merges |
+| FED-BD-22 | P0 | ACTIVE | Qualify F05 probe source with exact-head Python 3.12/3.13 policy CI, Python 3.9 BLSN, PyPy, Windows and negative-case results; require independent final-head review |
+| FED-BD-23 | P0 | GOVERNANCE_HOLD | Address historical PR #52 merge with no completed independent review through owner-audited admission discrepancy, #44 protocol decision and #50 effective rules; no retrospective approval |
+| FED-BD-24 | P1 | DONE_SOURCE | Document scope difference: PR #49 canonical 20-node, 24-edge federation DAG is DECLARED, F02 six-node microplan is INERT subset, Hub owns real scheduler; no false ready-set equivalence |
 
 ## Latest F04 pulse reconciliation (10 November 2026)
 
@@ -69,6 +73,16 @@ Each completed item means its narrowly scoped source/checklist step is done, not
 - **Do not merge #48 on full-red baseline or silently cherry-pick #52**; rebase/qualification must follow the owner-reviewed #52 repair (or an explicitly governed equivalent) and independent exact-head review.
 - The Ubuntu Python 3.9 Ruff I001 defect required two source edits: import spacing followed by correct standard-library/first-party grouping. Each new commit invalidates older-head CI evidence; no RED waiver.
 - Render source and Git blob checks passed. Native pinned Mermaid CLI parity remains **NOT RUN**. The F03 Graphviz semantic render is a legitimate review view, not a claim of Mermaid layout equivalence.
+
+## F05 — source-to-admission convergence (10 November 2026)
+
+- Reconciled existing PR #48 by an expected-head, non-force **two-parent merge** of current main into its feature branch: `803532158ea4ed1bff51506f6e5d7d86238d2bc5`. The 10 F02 paths and eight intervening main paths were **disjoint**. Main branch unchanged; branch is zero commits behind main at that reconciliation.
+- Fresh native tests on the reconciliation head: [F02 policy QA](https://github.com/GBOGEB/GEMINI/actions/runs/42903253413) **2/2 SUCCESS**. Its full [BLSN matrix](https://github.com/GBOGEB/GEMINI/actions/runs/42903254382) was 11 successful and PyPy 3.9 running at the first observation; these checks do not qualify the newer F05 code head.
+- [PR #52](https://github.com/GBOGEB/GEMINI/pull/52) is already merged, no duplicate broker fix or third broker. [Mainline check evidence](https://github.com/GBOGEB/GEMINI/actions/runs/42893744721) and broker/legacy negative workflows show **16/16 SUCCESS** on exact main `d3a885...`; its historical independent review gap remains for #50 owner disposition.
+- New [F05 advisory admission probe](../../../src/federation_admission_probe.py) and [21 adversarial tests](../../../tests/test_federation_admission_probe.py) check stale SHA, required status contexts, nonzero steps, provider identity, last-push review freshness, bypass actors and RED/stale negative canaries. It **never grants** merge or execution rights even for synthetic complete evidence.
+- The pinned [historical source snapshot](../../../config/federation/admission_observation_20261110.json) records the active [Main_Protect](https://github.com/GBOGEB/GEMINI/rules/26381197) ruleset's two existing rules and intentionally incomplete review/check data. Its expected diagnostic is **HOLD**, not a green admission receipt.
+- [Probe operator notes](ADMISSION_READINESS_PROBE_F05.md) distinguish the PR #49 20-node canonical declared architecture DAG from F02's six-node **inert micro-example** and prevent promotion of either into the actual Hub/BridgeFlow production scheduler.
+- Current F05 source commits and this ledger update invalidate earlier review/CI qualifications; re-read exact latest PR head before attempting admission. Owner #44, G1 #50, IC3 #12 and R3 #16 stay open.
 
 ## Critical prerequisite DAG
 
