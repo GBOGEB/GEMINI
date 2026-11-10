@@ -9,6 +9,7 @@ GEMINI is the **governed cross-agent contract and handover surface** in the GBOG
 - [Architecture and authority boundaries](architecture.md)
 - [GitHub App, OAuth and webhook setup](github-app-auth.md)
 - [Contract registry and recursive BD queue](contracts-bdq.md)
+- [All five diagrams — GitHub Mermaid preview](diagrams/rendered.md)
 - [Topology diagram](diagrams/topology.mmd)
 - [SIPOC](diagrams/sipoc.mmd)
 - [Kahn dependency/worker lanes](diagrams/kahn-lanes.mmd)
