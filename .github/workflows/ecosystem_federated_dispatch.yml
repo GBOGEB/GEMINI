@@ -1,0 +1,74 @@
+name: Ecosystem Federated Dispatch Handover
+
+# Target: GBOGEB/GEMINI  ->  .github/workflows/ecosystem_federated_dispatch.yml
+# Emits repository_dispatch `ecosystem_worktree_sync` to GBOGEB/CODEX and GBOGEB/ABACUS.
+# Requires repo secret ECOSYSTEM_PAT: fine-grained PAT, resource owner GBOGEB,
+# repositories CODEX + ABACUS only, permission "Contents: Read and write" (needed for /dispatches).
+# Receivers must declare:  on: repository_dispatch: types: [ecosystem_worktree_sync]
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'config/worktree_manifest.yaml'
+      - 'notebook/blsn_interactive.md'
+      - 'src/pipeline.py'
+  workflow_dispatch:   # manual re-send after a failed or missed dispatch
+
+permissions: {}        # the job uses only ECOSYSTEM_PAT; GITHUB_TOKEN gets no scopes
+
+concurrency:
+  group: ecosystem-dispatch-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dispatch-handover:
+    name: Dispatch SSOT handover to ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [GBOGEB/CODEX, GBOGEB/ABACUS]
+    steps:
+      # No checkout: SHA and message come from the event, so no third-party action is needed.
+      - name: Build payload
+        env:
+          SOURCE_REPO: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          # Passed through env (never interpolated into the script) to avoid script injection.
+          HEAD_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          subject="$(printf '%s' "${HEAD_MSG:-manual dispatch}" | head -n1)"
+          jq -n \
+            --arg repo "$SOURCE_REPO" \
+            --arg sha "$COMMIT_SHA" \
+            --arg msg "$subject" \
+            --arg time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{
+              event_type: "ecosystem_worktree_sync",
+              client_payload: {
+                source_repo: $repo,
+                commit_sha: $sha,
+                commit_message: $msg,
+                timestamp_utc: $time,
+                cloud_path: "gdrive://GBOGEB_WORKTREES/GEMINI/"
+              }
+            }' > dispatch_payload.json
+          cat dispatch_payload.json
+
+      - name: Dispatch to ${{ matrix.target }}
+        env:
+          GH_TOKEN: ${{ secrets.ECOSYSTEM_PAT }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::ECOSYSTEM_PAT is not set in this repository"; exit 1
+          fi
+          # gh api exits non-zero on any non-2xx (GitHub returns 204 on success).
+          gh api --method POST "repos/${TARGET}/dispatches" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            --input dispatch_payload.json
+          echo "Dispatched ecosystem_worktree_sync to ${TARGET} for ${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
