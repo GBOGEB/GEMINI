@@ -1,0 +1,87 @@
+# Evidence vocabulary per GEMINI.md: VERIFIED / IMPLEMENTED / DECLARED / INFERRED / PARTIAL / DEFERRED.
+schema_version: 1
+receipt_type: handover_reconciliation
+session_id: GMI-WISHBONE-20261113-001
+source_agent: Gemini
+consumer_agent: Claude
+observed_at: 2026-11-13
+status: PARTIAL
+event: CONNECTOR_READ_AND_REPO_RECONCILIATION
+repo_snapshot:
+  repository: GBOGEB/GEMINI
+  ref: main
+  sha: 4a9a4796b08a3e96a110d4f6d62fe1577dbcc678
+  read_via: github_api   # no local clone exists on the workstation
+packages:
+  - id: wishbone_worktree_gdrive_convergence
+    received_as: chat_paste   # manifest.yaml + handover.md + shell commands
+    drive_sources:
+      - file_id: 1ckpq6JgSBsx27ceRWeH87zfsAR2otn411z-wWxjiMd4
+        title: GEMINI_Wishbone_Worktree_Handover_Manifest.md
+        native_type: google_doc
+        content_read: true
+        sha256: null
+      - file_id: 1SkSH-oEBHIraIMYrkr9obt0fVZOasAxb
+        title: WISHBONE_SUPERDAG_MANIFEST.json
+        content_read: true
+        sha256: null
+    claims:
+      - claim: "Target repository is GBOGEB/GEMINI, default branch main"
+        state: VERIFIED
+        evidence: "Drive doc names GBOGEB/GEMINI; repo exists, default branch main"
+      - claim: "worktree.root /worktree/propagation-core; tracks/track_a|b|c paths"
+        state: DECLARED
+        evidence: "No such path on the workstation; no tracks/ directory in the repo tree"
+      - claim: "Drive folder Propagation_DAG_Convergence is the sync target"
+        state: DECLARED
+        evidence: "No Drive item with that title found through the connector"
+      - claim: "Branches track/A-w01-dmaic, track/B-w01-mip, track/C-w01-converge are ACTIVE_VERIFICATION / PENDING_CONVERGENCE"
+        state: DECLARED
+        evidence: "None of the three branches exists on origin; no worktrees exist"
+      - claim: "baseline_commit v7.0.0-rc1; promotion into release/stable"
+        state: DECLARED
+        evidence: "Repo has no tags and no release/* branch"
+      - claim: "uv run pytest --matrix-lane=A|B --strict-config validates the tracks"
+        state: DECLARED
+        evidence: "pyproject.toml holds only [tool.pytest.ini_options] pythonpath; no conftest.py defines --matrix-lane, no uv.lock. pytest would exit on the unknown option"
+      - claim: "scripts/wishbone_amalgamate.py merges track telemetry into master_coherency_manifest.json"
+        state: DECLARED
+        evidence: "File absent; scripts/ holds only build_qps_r3_successor_handoff.{ps1,sh} and validate_r3_exact_env_capsule.py. No telemetry.json producer found"
+      - claim: "checkout_gates v1..v5 PASS (ruff, zod schema, DAG sort, unit matrix, telemetry)"
+        state: DECLARED
+        evidence: "No run, artifact or CI record supports them"
+      - claim: "merkle_sha256 / merkle_root_c values and makespan, utilisation, SIPOC purity figures"
+        state: DECLARED
+        evidence: "No input set or computation found; treat as not computed (GEMINI.md: do not invent hashes)"
+      - claim: "Every receipt retains its cryptographic origin stamp"
+        state: DECLARED
+        evidence: "Package itself carries no session id, Drive revision id or computed hash"
+    conflicts:
+      - "A root-level manifest.yaml would sit beside the existing repo_manifest.yaml (one owner per manifest)"
+      - "handover.md carries '[cite: 1.3]' markers with no resolvable source"
+  - id: schrijfeditor_dmaic_orchestrator
+    received_as: chat_paste   # Dutch handover note + manifest.json, created_at 2026-11-12T21:06:00Z
+    claims:
+      - claim: "cli.py and config.json exist on Drive"
+        state: PARTIAL
+        evidence: "Both found in Drive folder 1hRqWlC_RwvawQGjo_yqS5U7g43NR_F1m, dated 2026-09-17; not confirmed to be the Schrijfeditor versions, contents not compared"
+      - claim: "main_sub.py, main_sub.mp, main_sub.json, main_sub.yaml, requirements.txt, .pre-commit-config.yaml, README.md, DMAIC_Execution_Report.html are part of the package"
+        state: DECLARED
+        evidence: "None found on Drive by title; that folder holds only cli.py, config.json, templates/, input/"
+      - claim: "integrity_check: Verified, lossless, no components omitted"
+        state: DECLARED
+        evidence: "No hashes in the manifest; 8 of 10 listed files not located"
+      - claim: "Target repository 'Schrijfeditor CLI & DMAIC Orchestrator'"
+        state: DECLARED
+        evidence: "No repo or local folder of that name under GBOGEB or on the workstation"
+verification:
+  content_read: true
+  source_declared_claims_promoted_automatically: false
+  sha256: null
+  commands_executed: false
+  note: "Nothing from either package was run, committed, pushed or uploaded."
+current_gate: SOURCE_RECONCILIATION
+next_action: "Owner decides: file this receipt by PR, and whether the missing Wishbone pieces (lane option, amalgamation script, telemetry) are to be built or the package returned to Gemini for the actual files."
+open_items:
+  - "Local search of the workstation for main_sub.* / wishbone* files timed out and was stopped; Drive and GitHub searches completed."
+  - "GEMINI declares no .python-version; CI interpreter not checked."
