@@ -1,0 +1,37 @@
+{
+  "schema_version": "gbogeb.c14.source-accounting-gate/1",
+  "source_as_of": "2026-11-16",
+  "evidence_class": "DERIVED_ACCOUNTING_NOT_IDENTITY_PROOF",
+  "source_version_label": "4.0.0-VERIFIED (source label only)",
+  "counts": {
+    "sidebar_rows_declared": 141,
+    "boundary_overlaps_declared": 3,
+    "unique_chats_declared": 138,
+    "safe_candidates_declared": 114,
+    "verify_local_declared": 19,
+    "keep_or_hold_declared": 5,
+    "independently_verified_chat_ids": 0,
+    "deletion_eligible": 0
+  },
+  "file_fidelity": {
+    "declared_worktree_files": 5,
+    "raw_source_bytes_locally_hashed": 3,
+    "google_doc_text_exports_hashed": 2,
+    "original_html_and_txt_byte_equivalence_proven": false
+  },
+  "governance": {
+    "authority_transfer": false,
+    "merge_authorized": false,
+    "chat_deletion_authorized": false,
+    "engineering_admission_authorized": false,
+    "publication_authorized": false
+  },
+  "source_owners": {
+    "source_accounting": "GBOGEB/GEMINI#56",
+    "satellite_renderer": "GBOGEB/document-organization-system#85",
+    "uri_resolver": "GBOGEB/document-organization-system#87",
+    "session_reconstruction": "GBOGEB/pipeline-automation-hub#1230",
+    "engineering_rfi": "GBOGEB/cryoplant-project#2334"
+  },
+  "disposition": "SOURCE_ACCOUNTING_HOLD_LOSSLESS_NOT_VERIFIED"
+}
