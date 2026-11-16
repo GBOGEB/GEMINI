@@ -1,0 +1,102 @@
+# Evidence vocabulary per GEMINI.md: VERIFIED / IMPLEMENTED / DECLARED / INFERRED / PARTIAL / DEFERRED.
+# Public-safe: no Drive object IDs, no private repository names, no controlled QPS content.
+# The full receipt, with Drive identities, stays in the owner's private Drive reconciliation folder.
+schema_version: 1
+receipt_type: wave_run
+session_id: GMI-DOCENG-20261112-FED
+session_id_origin: "Assigned by the consumer agent. The source issued node GMI_DOCENG_001 and urn:ssot:gbogeb:gemini:handover:v2.2:2026-11-12 only."
+source_agent: Gemini
+consumer_agent: Claude
+observed_at: "2026-11-15"
+status: PARTIAL
+event: KAHN_WAVE_RUN_W1_TO_W4
+authority_transfer: false
+repo_snapshot:
+  repository: GBOGEB/GEMINI
+  ref: main
+  sha: 1cada3bb20952fbe0ef1009abbd2048e8226a0e9
+  read_via: github_api_and_local_clone
+package:
+  received_as: chat_paste   # two manifests issued for one worktree root
+  issues:
+    - version: "2.0.0-ZOD4-ALKANE"
+      waves: W0-W5
+    - version: "gbogeb.gemini.handover.v2.2"
+      waves: W0-W8
+  reconciliation: >-
+    The two issues share one worktree root but describe two jobs. They were bound by
+    one private index as two variants over this repository's backbone (package
+    contract, precedence_contract_v1.json, sipoc.mmd, LANES.md). Only the federation
+    variant concerns this repository and is receipted here. The other variant is a
+    non-code communication action and is out of scope for a public repository.
+waves:
+  - wave: W1_VALIDATION
+    state: PARTIAL
+    checks:
+      - check: "src/handover_package.py validate_manifest on the 2.0.0-ZOD4-ALKANE manifest"
+        verdict: REJECT
+        reason: "Seven required fields missing; status READY_FOR_HANDOVER is not an evidence state"
+      - check: "validate_package on the federation variant manifest rewritten to contract v1"
+        verdict: ACCEPT
+        note: "Structural validity only; source claims stay DECLARED"
+      - check: "Structural Kahn sort of the issued wave graph"
+        verdict: PASS
+        fronts: [[W0_CAPTURE], [W1_VALIDATION], [W2_L2_GG_MATH, W2_L3_DOCX_RENDER, W2_L4_ABACUS_CODEX], [W3_RECEIPT_JOIN], [W4_QA_VERIFICATION], [W5_PUBLISH_HANDOVER, W6_GITHUB_PR], [W7_ADMISSION], [W8_CONVERGENCE]]
+  - wave: W2_DISJOINT_WORKERS
+    state: DEFERRED
+    reason: "Each lane is named but given no input: no patch, dataset or document, and no lane branch."
+    lanes:
+      - {lane: L2_GG_MATH, owner_repo: GBOGEB/gg_MATH, executed: false}
+      - {lane: L3_DOCX_RENDER, owner_repo: GBOGEB/DOCX_RTM_Automation, executed: false}
+      - {lane: L4_ABACUS_CODEX, owner_repo: "GBOGEB/ABACUS + GBOGEB/CODEX", executed: false}
+    owner_pulse_observed_at: "2026-11-14"
+    owner_pulse_note: "Workflow-run conclusions at each owner's default-branch head, read-only. Failures not classified. Public owners only. Not a lane output; does not count toward the join."
+    owner_pulse:
+      - {repo: GBOGEB/gg_MATH, sha: ba1056b5ed402787f9cc399349c70b4e4987eee3, runs: {success: 10}}
+      - {repo: GBOGEB/DOCX_RTM_Automation, sha: d1ae2b651d7dee6e18c27fb95ae3215a52c86a1c, runs: {success: 8, failure: 1}}
+      - {repo: GBOGEB/ABACUS, sha: 1b3a6a513d2a02ad46de7fe8c61a85bb5405f876, runs: {success: 49, failure: 1}}
+      - {repo: GBOGEB/CODEX, sha: 38831761dcfb1999feeca9545814dca8ae5a66d0, runs: {success: 27, failure: 1}}
+      - {repo: GBOGEB/pipeline-automation-hub, sha: ae328a6e3644e1824a12eef694eb4d0f706f35dc, runs: {success: 49, failure: 1}}
+  - wave: W3_RECEIPT_JOIN
+    state: DEFERRED
+    reason: "The join needs every selected child receipt. Zero exist."
+  - wave: W4_QA_VERIFICATION
+    state: PARTIAL
+    lanes:
+      - lane: OWNER_NATIVE_TESTS
+        executed: true
+        command: "py -3.12 -m pytest -q -p no:cacheprovider"
+        environment: "Windows workstation, Python 3.12.7, pytest 9.1.1"
+        outcome: "252 passed, 54 subtests passed"
+        scope_note: "Qualifies this repository at repo_snapshot.sha only. No change from the handover exists to be tested."
+      - lane: FIRST_RED_CANARIES
+        executed: false
+        reason: "No PR head from the handover to run a canary against."
+      - lane: PLAYWRIGHT_STATIC_QA
+        executed: false
+        reason: "This repository has no Playwright configuration."
+findings:
+  - claim: "W5_PUBLISH_HANDOVER is COMMITTED"
+    state: DECLARED
+    evidence: "Issued as COMMITTED while its predecessors W3 and W4 were pending. Under the edge rule in kahn-validation.md a status label is not a completion."
+  - claim: "Publication precedes the PR"
+    state: DECLARED
+    evidence: "precedence_contract_v1.json publishes after admission (Z0 follows M0). The issued waves publish before W6. Kept as issued; open for the owner."
+  - claim: "Target repository dmaic-lossless-core"
+    state: DECLARED
+    evidence: "The 2.0.0 issue names GBOGEB/dmaic-lossless-core@main; that repository does not resolve."
+  - claim: "src/handover_package.py validates schema v1/v2.2"
+    state: DECLARED
+    evidence: "SUPPORTED_SCHEMA_VERSIONS = {1} at repo_snapshot.sha."
+  - claim: "Drive folder Propagation_DAG_Convergence is the sync target"
+    state: PARTIAL
+    evidence: "The folder now exists, created by consumer agents. LANES.md keeps one Drive root, GEMINI_QPS_HANDOVER_2026-09-17; this is a second root outside that convention. Two same-named folders were created; one was renamed as superseded."
+verification:
+  source_declared_claims_promoted_automatically: false
+  sha256: null
+  note: "Nothing from the package was committed or pushed other than this receipt."
+later_observation:
+  at: "2026-11-16"
+  note: "main advanced to f555a4c47a91489282f9cf7fd93ad1f3da3da7a3 (#57, C14 v4.1 source-accounting gate). The test result above is for repo_snapshot.sha only."
+current_gate: W2_DISJOINT_WORKERS
+next_action: "Owner decides whether the source agent supplies a concrete input per lane (repo, sha, payload). Until then W2 and W3 stay DEFERRED and W6-W8 do not start."
