@@ -1,0 +1,70 @@
+# Evidence vocabulary per GEMINI.md: VERIFIED / IMPLEMENTED / DECLARED / INFERRED / PARTIAL / DEFERRED.
+# Thread alias: GM001 / DECANOL-01 (gg_MATH, C10-OH slot of the alkane-alcohol chain).
+schema_version: 1
+receipt_type: handover_reconciliation
+session_id: GMI-GGMATHV3-20261115-001
+source_agent: Gemini
+consumer_agent: Claude
+observed_at: 2026-11-16
+status: PARTIAL
+event: CHAT_PASTE_RECONCILIATION_AGAINST_GITHUB
+thread_alias:
+  code: GM001
+  mnemonic: DECANOL-01
+  chain_slot: C10-OH
+repo_snapshots:
+  - repository: GBOGEB/GEMINI
+    ref: main
+    sha: f555a4c47a91489282f9cf7fd93ad1f3da3da7a3
+    read_via: github_api
+  - repository: GBOGEB/gg_MATH
+    ref: main
+    sha: 1132ea1d7f95480f8be45f5b1aa4d5faf3137e3c
+    read_via: github_api
+packages:
+  - id: ggmath_v3_federation_overview
+    received_as: chat_paste   # relayed by an intervening Claude iPhone session; overview of sessions, Drive tree, C01-OH..C15-OH chain, PR impact
+    claims:
+      - claim: "GGMathOracle background calculus (derivatives, extrema, lobe integrals) is complete"
+        state: IMPLEMENTED
+        evidence: "Re-implemented dependency-free as kernels/series_oracle.py in gg_MATH PR #140 (open, head 2a5d3d0a, 15 checks pass / 4 skipped, MERGEABLE, no review yet). Original numpy version not in any repo."
+      - claim: "DW-SPM v2.0/v3.0 scaling engine work landed"
+        state: VERIFIED
+        evidence: "gg_MATH PR #139 (per-lane min_scale floors in the exact allocator) merged 2026-11-15T14:40:08Z"
+      - claim: "Plotly 2-Swarm Hive, composite ML kernels, GP surrogate, binary graph archaeologist are complete"
+        state: DECLARED
+        evidence: "No math_oracle.py, composite_kernels.py or gp_tier_surrogate.py in any GBOGEB repo (code search + tree listing). PR #140 notes the hive's lane table and spectral numbers were hardcoded and did not port it."
+      - claim: "PowerShell 7.2+ RFC 3986 DOV gate Resolve-GbogebArtifactUri.ps1; Sync-GDriveWorktreeToLocal.ps1; Invoke-GbogebPulse.ps1 9-step pulse"
+        state: DECLARED
+        evidence: "None of the three files found in any GBOGEB repo"
+      - claim: "Drive layout G:/My Drive/GEMINI and G:/My Drive/GEMINI_WORKTREES (00_KAHN_DAG_WAVES, 01_ALKANE_ALCOHOL_CHAIN C01..C15, 02_QPLANT_RELEASE_SURFACES)"
+        state: DECLARED
+        evidence: "No G: drive mounted on the workstation; folders not verified. Drive connector not queried for this receipt."
+      - claim: "Manifests .handover/manifest.json, .handover/handover.glob.yaml and root manifest.yaml"
+        state: DECLARED
+        evidence: "No handover.glob.yaml in any repo; GEMINI keeps receipts under handover/receipts and its manifest is repo_manifest.yaml (see GMI-WISHBONE-20261113-001 conflict note on a second manifest)"
+      - claim: "Branches wt/fold-in-uri-ssot-v3, wt/roll-up-wishbone-v3, wt/propagate-rtm-links-v3 isolate the work"
+        state: DECLARED
+        evidence: "None exists on origin in GEMINI, gg_MATH, document-organization-system, pipeline-automation-hub or ABACUS"
+      - claim: "Ready to push the 3-stage PR cascade document-organization-system -> pipeline-automation-hub -> ABACUS"
+        state: DECLARED
+        evidence: "No matching open or closed PR in the three repos; no source files to push (see above)"
+      - claim: "rugga-## identifiers are unassigned numeric worktree slots under .incubate/"
+        state: DECLARED
+        evidence: "No branch, folder or document using rugga-## found"
+      - claim: "Pester/Pytest tests return zero failures; audit-ready, schema-validated state"
+        state: DECLARED
+        evidence: "No run or artifact backs this beyond the CI of gg_MATH #139 and #140"
+    conflicts:
+      - "The alias C10-OH DECANOL for gg_MATH is adopted as a naming hook only; it creates no folder, branch or manifest."
+verification:
+  content_read: true
+  source_declared_claims_promoted_automatically: false
+  sha256: null
+  commands_executed: false
+  note: "Nothing from the package was run. Verification used gh against GitHub only."
+current_gate: SOURCE_RECONCILIATION
+next_action: "Owner reviews and merges gg_MATH #140 when satisfied. Build the declared-only pieces (URI gate, Drive sync, pulse, cascade) only if the owner asks; otherwise return the package to Gemini for the actual files."
+open_items:
+  - "Drive (connector) not searched for the v3 bundle; GEMINI_WORKTREES may exist on a machine without the G: mount here."
+  - "GEMINI declares no .python-version; CI interpreter not checked."
