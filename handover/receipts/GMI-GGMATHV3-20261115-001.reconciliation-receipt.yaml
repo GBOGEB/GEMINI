@@ -6,6 +6,7 @@ session_id: GMI-GGMATHV3-20261115-001
 source_agent: Gemini
 consumer_agent: Claude
 observed_at: 2026-11-16
+amended_at: 2026-11-17
 status: PARTIAL
 event: CHAT_PASTE_RECONCILIATION_AGAINST_GITHUB
 thread_alias:
@@ -21,6 +22,21 @@ repo_snapshots:
     ref: main
     sha: 1132ea1d7f95480f8be45f5b1aa4d5faf3137e3c
     read_via: github_api
+amendment_snapshots:   # read for amendment 1 (2026-11-17)
+  - repository: GBOGEB/GEMINI
+    ref: main
+    sha: 76588a5c8c18a47fe22aa4a5df6a81737106bc83
+    read_via: github_api
+  - repository: GBOGEB/gg_MATH
+    ref: main
+    sha: 7fc904a01013f606f9218b2e83a0a9f3d23200d2
+    read_via: github_api
+  - repository: GBOGEB/document-organization-system
+    ref: main
+    sha: f3e2d7a636dafe120f7c0d3dc628ce4ca75e2843
+    read_via: github_api
+  - source: google_drive
+    read_via: drive_connector   # folder listings and one _SNAPSHOT_META.yaml read; no other file content read
 packages:
   - id: ggmath_v3_federation_overview
     received_as: chat_paste   # relayed by an intervening Claude iPhone session; overview of sessions, Drive tree, C01-OH..C15-OH chain, PR impact
@@ -34,37 +50,61 @@ packages:
       - claim: "Plotly 2-Swarm Hive, composite ML kernels, GP surrogate, binary graph archaeologist are complete"
         state: DECLARED
         evidence: "No math_oracle.py, composite_kernels.py or gp_tier_surrogate.py in any GBOGEB repo (code search + tree listing). PR #140 notes the hive's lane table and spectral numbers were hardcoded and did not port it."
-      - claim: "PowerShell 7.2+ RFC 3986 DOV gate Resolve-GbogebArtifactUri.ps1; Sync-GDriveWorktreeToLocal.ps1; Invoke-GbogebPulse.ps1 9-step pulse"
+      - claim: "PowerShell 7.2+ RFC 3986 DOV gate Resolve-GbogebArtifactUri.ps1"
+        state: IMPLEMENTED
+        evidence: "Re-implemented in document-organization-system PR #87 (merged 2026-11-16T00:26:50Z, merge b82c48fb): contracts/uri_ssot/ with a stdlib Python reference, the PowerShell 7.2 port and hand-written vectors; workflow uri-ssot-contract.yml succeeded on the merge commit (run 43780414256). It replaces the Gemini resolver and deliberately departs from it: absolute-URI parsing per RFC 3986 section 3.1, no default fragment OID 1.3.6.1.4.1.99999.1.1, no constant DovCompliant. Amended 2026-11-17; was DECLARED (see amendments)."
+      - claim: "Sync-GDriveWorktreeToLocal.ps1; Invoke-GbogebPulse.ps1 9-step pulse"
         state: DECLARED
-        evidence: "None of the three files found in any GBOGEB repo"
+        evidence: "Neither file found in any GBOGEB repo (code search 2026-11-16; re-checked 2026-11-17)"
       - claim: "Drive layout G:/My Drive/GEMINI and G:/My Drive/GEMINI_WORKTREES (00_KAHN_DAG_WAVES, 01_ALKANE_ALCOHOL_CHAIN C01..C15, 02_QPLANT_RELEASE_SURFACES)"
-        state: DECLARED
-        evidence: "No G: drive mounted on the workstation; folders not verified. Drive connector not queried for this receipt."
+        state: PARTIAL
+        evidence: >-
+          Drive connector, 2026-11-17. The folder skeleton exists but holds almost no content, and it exists twice at the My Drive root.
+          Pair A (created 2026-11-14 22:01-22:02Z): GEMINI (1VttZEVoicIeH-q3LmGHy8ZhWTmlAFRzM) with _SNAPSHOT_META.yaml,
+          src/ holding 7 Python files of 1.2-2.6 KB (drive_ingress, handover_package, federation_bridge, rtm_graph_engine,
+          gg_math_wishbone_mc_scaler, argon_kahn_dag_engine, validate_keystone_locks; not read) and an empty federated_mirrors/;
+          GEMINI_WORKTREES (1k_Y2hogKVEdBZZrHJ2qCEA5vjs0LytSZ) with 00_KAHN_DAG_WAVES, 01_ALKANE_ALCOHOL_CHAIN and
+          02_QPLANT_RELEASE_SURFACES, all three empty.
+          Pair B (created 2026-11-14 22:05-22:06Z): GEMINI (10RMUZ_DSzZjRjG0MAMBliTlvQnEF4fTV) whose _SNAPSHOT_META.yaml says
+          status AWAITING_INITIAL_ROBOCOPY_OR_TARBALL_SYNC with no commit SHA, and whose src/ and federated_mirrors/ are empty;
+          GEMINI_WORKTREES (1FRarHERYAgW8imsTbKLE7XtaIlWLEd8w) with wave folders W0_CAPTURE..W5_PUBLISH_HANDOVER (no _in/_work/_out
+          subfolders, no files), eight empty chain folders C01, C02, C10..C15 matching the overview's names, and an empty
+          02_QPLANT_RELEASE_SURFACES. The C10-OH work sits outside this tree in root folders c1111_C10OH_Decanol__WT_20261112,
+          __v2_20261112, __v3_20261112 and __v4_20261114 (not read). No G: drive is mounted on the workstation.
       - claim: "Manifests .handover/manifest.json, .handover/handover.glob.yaml and root manifest.yaml"
         state: DECLARED
-        evidence: "No handover.glob.yaml in any repo; GEMINI keeps receipts under handover/receipts and its manifest is repo_manifest.yaml (see GMI-WISHBONE-20261113-001 conflict note on a second manifest)"
+        evidence: "No handover.glob.yaml file in any repo (the name appears only in docs, e.g. document-organization-system skills/gdrive-worktree-hmi/SKILL.md); no manifest.yaml in either Drive GEMINI_WORKTREES root. GEMINI keeps receipts under handover/receipts and its manifest is repo_manifest.yaml (see GMI-WISHBONE-20261113-001 conflict note on a second manifest). Drive holds Handover_v3_2_Pulse_C10OH_C16.glob.yaml (2026-11-16, not read)."
       - claim: "Branches wt/fold-in-uri-ssot-v3, wt/roll-up-wishbone-v3, wt/propagate-rtm-links-v3 isolate the work"
         state: DECLARED
-        evidence: "None exists on origin in GEMINI, gg_MATH, document-organization-system, pipeline-automation-hub or ABACUS"
+        evidence: "No refs/heads/wt/* on origin in GEMINI, gg_MATH, document-organization-system, pipeline-automation-hub or ABACUS (git ls-remote, all refs, 2026-11-17)"
       - claim: "Ready to push the 3-stage PR cascade document-organization-system -> pipeline-automation-hub -> ABACUS"
         state: DECLARED
-        evidence: "No matching open or closed PR in the three repos; no source files to push (see above)"
+        evidence: "No matching open or closed PR in the three repos. Only the URI-gate stage has landed, as a re-implementation (document-organization-system #87); the roll-up and propagate stages have no source files."
       - claim: "rugga-## identifiers are unassigned numeric worktree slots under .incubate/"
         state: DECLARED
         evidence: "No branch, folder or document using rugga-## found"
       - claim: "Pester/Pytest tests return zero failures; audit-ready, schema-validated state"
         state: DECLARED
-        evidence: "No run or artifact backs this beyond the CI of gg_MATH #139 and #140"
+        evidence: "No run or artifact backs this beyond the CI of gg_MATH #139 and #140 and document-organization-system #87"
     conflicts:
       - "The alias C10-OH DECANOL for gg_MATH is adopted as a naming hook only; it creates no folder, branch or manifest."
+      - "Two parallel GEMINI + GEMINI_WORKTREES pairs exist at the Drive root (created about 4 minutes apart on 2026-11-14). Neither is designated canonical; pair A holds the only content."
+amendments:
+  - date: 2026-11-17
+    by: Claude
+    changes:
+      - "Split the URI-gate claim from the sync/pulse claim. Resolve-GbogebArtifactUri.ps1 moves DECLARED -> IMPLEMENTED. The original receipt missed document-organization-system #87, which merged about 14 hours before it was written; the code search used then likely ran against a stale index."
+      - "Drive layout moves DECLARED -> PARTIAL after a Drive connector listing (resolves the former open item 'Drive (connector) not searched')."
+      - "Branch, cascade, manifest and test claims re-checked; still DECLARED, with evidence text updated."
+      - "Added amendment_snapshots; repo_snapshots keeps the SHAs read for the original receipt."
 verification:
   content_read: true
   source_declared_claims_promoted_automatically: false
   sha256: null
   commands_executed: false
-  note: "Nothing from the package was run. Verification used gh against GitHub only."
+  note: "Nothing from the package was run. Verification used gh against GitHub and, for amendment 1, the Google Drive connector (listings plus one _SNAPSHOT_META.yaml read)."
 current_gate: SOURCE_RECONCILIATION
-next_action: "Owner reviews and merges gg_MATH #140 when satisfied. Build the declared-only pieces (URI gate, Drive sync, pulse, cascade) only if the owner asks; otherwise return the package to Gemini for the actual files."
+next_action: "Owner reviews and merges gg_MATH #140 when satisfied. Owner picks one canonical Drive GEMINI / GEMINI_WORKTREES pair and retires the other. Build the remaining declared-only pieces (Drive sync, pulse, roll-up and propagate stages) only if the owner asks; otherwise return the package to Gemini for the actual files."
 open_items:
-  - "Drive (connector) not searched for the v3 bundle; GEMINI_WORKTREES may exist on a machine without the G: mount here."
+  - "The 7 Python files in Drive pair A GEMINI/src and the c1111_C10OH_Decanol__v2..v4 folders have not been read or compared with the repos."
   - "GEMINI declares no .python-version; CI interpreter not checked."
