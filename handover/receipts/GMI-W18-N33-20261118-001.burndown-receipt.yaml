@@ -22,7 +22,7 @@ native_evidence:
   source_proof_run: https://github.com/GBOGEB/pipeline-automation-hub/actions/runs/44305915505
   latest_run: https://github.com/GBOGEB/pipeline-automation-hub/actions/runs/44306657931
   source_proof_outcome: DRIVER_PASS_POST_RUN_ASSERTION_RED
-  latest_ci_outcome: PENDING_FINAL_READBACK
+  latest_ci_outcome: EXACT_HEAD_16_PR_TRIGGERED_WORKFLOWS_SUCCESS
   baseline_arcs: 27
   eligible_arcs: 276
   direct_cli_union_arcs: 201
@@ -36,6 +36,7 @@ n12_provenance:
   original_objects_git_blob: 407f3439669935f1884d79701b2889f1f0bf8591
   original_reading_git_blob: ef8161e3fdcd797b3f6f8c1adb1829c09af47522
   prior_head_native_result: PASS
+  current_head_native_result: PASS
 handover:
   bridge_owner_repo: GBOGEB/GEMINI
   archive_estate: PRIVATE_LOCAL_ONLY
@@ -49,10 +50,15 @@ review:
   eligible_approvals: 0
   unresolved_source_thread: 1
   trusted_fpc: FAILURE
+  trusted_fpc_reason: CODEX_REVIEW_NOT_COMPLETED_ON_EXACT_HEAD
+  trusted_fpc_run: https://github.com/GBOGEB/pipeline-automation-hub/actions/runs/44306698285
+  codex_review_summary_head: 65ccc4f9c1cb2d0e9e9d40ab34634d1652325d4e
+  codex_current_head_request: https://github.com/GBOGEB/pipeline-automation-hub/pull/1253#issuecomment-6980482522
+  source_thread_evidence_reply: https://github.com/GBOGEB/pipeline-automation-hub/pull/1253#discussion_r4614969014
   reviewer_admission: HOLD
-current_gate: EXACT_HEAD_CI_AND_INDEPENDENT_REVIEW
+current_gate: CODEX_EXACT_HEAD_REVIEW_AND_TRUSTED_FPC
 next_action: >-
-  Recheck exact-head native CI, retain first-red evidence, independently
-  dispose of the tracked-dirty-source review finding, and obtain eligible
-  review and trusted FPC; run local Windows worktree census before claiming
-  any lossless portfolio handover.
+  Preserve source SHA while waiting for an exact-head Codex review completion
+  and independent disposal of the tracked-dirty-source finding; then require
+  a fresh trusted FPC receipt. Local Windows worktree census and real Git
+  hydration parity remain uncaptured and must not be promoted to PASS.
