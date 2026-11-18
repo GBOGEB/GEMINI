@@ -1,0 +1,86 @@
+# Public-safe exact-head checkpoint: no private Drive IDs, local paths, raw chats or source binaries.
+schema_version: 1
+receipt_type: burndown_checkpoint
+session_id: GMI-W18-N33-20261118-001
+source_agent: ChatGPT
+consumer_agent: GBOGEB-portfolio-integrator
+observed_at: '2026-11-18'
+status: PARTIAL
+event: W18_SECTION7_EXACT_HEAD_BURNDOWN
+authority_transfer: false
+merge_authorized: false
+source_repository: GBOGEB/pipeline-automation-hub
+source_pr: https://github.com/GBOGEB/pipeline-automation-hub/pull/1253
+source_head: a681aff03f784529b11feedf3a6c3f07a1768600
+prior_hidden_index_head: 53fd5e8086aaafd5e1c0f7f54754289a094603d8
+previous_head_native_green: ecd9174b27b449c0ce04ccc8e6789f3bc3f1d3d5
+source_commits:
+  - sha: 0b06fcc162582123df4bdc1d5652ca97131a2829
+    role: original_import_guard_proof_and_n12_original_git_objects
+  - sha: ecd9174b27b449c0ce04ccc8e6789f3bc3f1d3d5
+    role: independent_native_consumer_oracle
+  - sha: 53fd5e8086aaafd5e1c0f7f54754289a094603d8
+    role: source_blob_parity_for_hidden_git_index_flags
+  - sha: 15874a3e1c3bb8c3324502728b2344559980da43
+    role: replace_filtered_blob_identity_with_raw_committed_bytes
+  - sha: a681aff03f784529b11feedf3a6c3f07a1768600
+    role: repair_clean_filter_adversarial_fixture_newline
+native_evidence:
+  earlier_failed_run: https://github.com/GBOGEB/pipeline-automation-hub/actions/runs/44304134213
+  source_proof_run: https://github.com/GBOGEB/pipeline-automation-hub/actions/runs/44305915505
+  latest_run: https://github.com/GBOGEB/pipeline-automation-hub/actions/runs/44306657931
+  source_proof_outcome: DRIVER_PASS_POST_RUN_ASSERTION_RED
+  latest_ci_outcome: CURRENT_HEAD_QUALIFICATION_IN_PROGRESS
+  previous_head_ci_outcome: '16/16 PR-triggered native SUCCESS at ecd9174b'
+  latest_source_guard_run: https://github.com/GBOGEB/pipeline-automation-hub/actions/runs/44318884250
+  latest_source_guard_native_tests: '18/18 PASS; real Git index flags and clean-filter raw-byte canaries'
+  current_raw_blob_guard_run: https://github.com/GBOGEB/pipeline-automation-hub/actions/runs/44320079986
+  current_head_n33_run: https://github.com/GBOGEB/pipeline-automation-hub/actions/runs/44320080208
+  current_head_n12_run: https://github.com/GBOGEB/pipeline-automation-hub/actions/runs/44320079860
+  baseline_arcs: 27
+  eligible_arcs: 276
+  direct_cli_union_arcs: 201
+  newly_reached_arcs: 175
+  baseline_arcs_seen_by_direct_cli: 26
+  separately_reverified_import_only_arc: [1262, -1]
+  cli_main_entry_arc: [1262, 1263]
+  no_fleet_capacity_claim: true
+n12_provenance:
+  original_census_git_blob: a4acba2826ac2aa4674933989791efc2fba5ae8b
+  original_objects_git_blob: 407f3439669935f1884d79701b2889f1f0bf8591
+  original_reading_git_blob: ef8161e3fdcd797b3f6f8c1adb1829c09af47522
+  prior_head_native_result: PASS
+  current_head_native_result: PASS
+handover:
+  bridge_owner_repo: GBOGEB/GEMINI
+  archive_estate: PRIVATE_LOCAL_ONLY
+  raw_chat_export: NOT_CAPTURED
+  windows_worktree_census: NOT_CAPTURED
+  git_bundle: NOT_CAPTURED
+  drive_publication: NOT_EXECUTED
+  portable_checkpoint: LOCAL_ARCHIVE_HASH_VERIFIED
+  local_restoration_and_negative_checks: '5 PASS; no Windows or actual Git clone hydration'
+review:
+  eligible_approvals: 0
+  unresolved_source_thread: 3
+  trusted_fpc: PENDING
+  trusted_fpc_reason: CURRENT_HEAD_CODEX_REVIEW_RUNNING
+  trusted_fpc_run: https://github.com/GBOGEB/pipeline-automation-hub/actions/runs/44320691661
+  previous_validated_head_fpc: SUCCESS_AT_ecd9174b_ONLY
+  previous_codex_review_summary_head: ecd9174b27b449c0ce04ccc8e6789f3bc3f1d3d5
+  current_codex_review_summary_head: a681aff03f784529b11feedf3a6c3f07a1768600
+  current_codex_review_state: RUNNING
+  codex_previous_head_request: https://github.com/GBOGEB/pipeline-automation-hub/pull/1253#issuecomment-6980482522
+  codex_previous_head_request: https://github.com/GBOGEB/pipeline-automation-hub/pull/1253#issuecomment-6980697879
+  codex_current_head_request: https://github.com/GBOGEB/pipeline-automation-hub/pull/1253#issuecomment-6980886949
+  clean_filter_p2_evidence_reply: https://github.com/GBOGEB/pipeline-automation-hub/pull/1253#discussion_r4615237094
+  new_p2_source_thread_evidence_reply: https://github.com/GBOGEB/pipeline-automation-hub/pull/1253#discussion_r4615107749
+  source_thread_evidence_reply: https://github.com/GBOGEB/pipeline-automation-hub/pull/1253#discussion_r4614969014
+  reviewer_admission: HOLD
+current_gate: CODEX_EXACT_HEAD_REVIEW_AND_TRUSTED_FPC
+next_action: >-
+  Requalify final raw-byte parity SHA in all native workflows and require a
+  complete exact-head Codex review. Independently dispose of THREE P2 threads,
+  then read a final successful trusted FPC receipt and all required checks.
+  The prior SHA's FPC PASS is historical only. Actual Windows census, dirty
+  overlays, Git bundles and source-bound hydration remain uncaptured.
